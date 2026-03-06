@@ -21,7 +21,13 @@ const Footer = () => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+      // FIX: Only set the user if they have an email address
+      // This prevents phone-only guests from triggering the "Active Session" UI
+      if (currentUser && currentUser.email) {
+        setUser(currentUser);
+      } else {
+        setUser(null);
+      }
     });
     return () => unsubscribe();
   }, []);

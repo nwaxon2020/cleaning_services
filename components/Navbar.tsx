@@ -29,7 +29,7 @@ const Navbar = () => {
   const ADMIN_ID = process.env.NEXT_PUBLIC_ADMIN_ID; 
 
   // Page classification logic
-  const whitePages = ["/about", "/faq", "/login", "/location"];
+  const whitePages = ["/about", "/faq", "/login", "/services"];
   const isWhitePage = whitePages.includes(pathname);
 
   useEffect(() => {
@@ -37,32 +37,33 @@ const Navbar = () => {
     window.addEventListener("scroll", handleScroll);
     
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      
-      if (!currentUser) {
-        setUnreadCount(0);
-        return;
-      }
-
-      if (currentUser.uid === ADMIN_ID) {
-        // ADMIN LOGIC: Listen to all chats and sum up unreadCountAdmin
-        const chatsRef = collection(db, "chats");
-        return onSnapshot(chatsRef, (snapshot) => {
-          let total = 0;
-          snapshot.docs.forEach(doc => {
-            const data = doc.data();
-            total += (data.unreadCountAdmin || 0);
+      // FIX: Only set the user if they have an email (Google or Email/Pass)
+      // This ignores the temporary Phone Auth from the Booking Modal
+      if (currentUser && currentUser.email) {
+        setUser(currentUser);
+        
+        if (currentUser.uid === ADMIN_ID) {
+          const chatsRef = collection(db, "chats");
+          return onSnapshot(chatsRef, (snapshot) => {
+            let total = 0;
+            snapshot.docs.forEach(doc => {
+              const data = doc.data();
+              total += (data.unreadCountAdmin || 0);
+            });
+            setUnreadCount(total);
           });
-          setUnreadCount(total);
-        });
+        } else {
+          const chatRef = doc(db, "chats", currentUser.uid);
+          return onSnapshot(chatRef, (doc) => {
+            if (doc.exists()) {
+              setUnreadCount(doc.data().unreadCountUser || 0);
+            }
+          });
+        }
       } else {
-        // CUSTOMER LOGIC: Listen only to their own room
-        const chatRef = doc(db, "chats", currentUser.uid);
-        return onSnapshot(chatRef, (doc) => {
-          if (doc.exists()) {
-            setUnreadCount(doc.data().unreadCountUser || 0);
-          }
-        });
+        // If there is no user or it's a phone-only guest, treat as logged out in Nav
+        setUser(null);
+        setUnreadCount(0);
       }
     });
 
@@ -173,7 +174,7 @@ const Navbar = () => {
           {/* TEXT CONTAINER */}
           <div className="flex flex-col justify-center">
             {/* TITLE */}
-            <span className="text-[10px] md:text-xl font-black tracking-tighter text-white leading-none uppercase">
+            <span className={`text-[10px] md:text-xl font-black tracking-tighter ${isWhitePage ? "text-zinc-400" : "text-white"} leading-none uppercase`}>
               BOSTON<span className="text-orange-500 group-hover:text-orange-400 transition-colors">CLEAN</span>
             </span>
 
@@ -181,7 +182,7 @@ const Navbar = () => {
             <div className="w-full h-[1px] bg-white/20 mt-1 mb-1 group-hover:bg-orange-500/50 transition-colors" />
 
             {/* SUBTITLE */}
-            <span className="text-[8px] md:text-[10px] font-bold tracking-[0.2em] text-zinc-500 uppercase leading-none italic">
+            <span className="text-[8px] md:text-[10px] font-bold tracking-[0.2em] text-zinc-400 uppercase leading-none italic">
               Premier Cleaning
             </span>
           </div>
@@ -196,10 +197,10 @@ const Navbar = () => {
               className={`relative px-4 py-2 text-sm uppercase tracking-widest font-semibold transition-colors duration-300 ${
                 pathname === link.href
                   ? isWhitePage
-                    ? "text-orange-600 font-black" // Active state on WHITE pages
+                    ? "text-orange-500 font-black" // Active state on WHITE pages
                     : "text-white font-black"      // Active state on DARK pages
                   : isWhitePage
-                    ? "text-slate-500 hover:text-orange-600" // Inactive state on WHITE pages
+                    ? "text-slate-400 hover:text-orange-500" // Inactive state on WHITE pages
                     : "text-gray-200 hover:text-white"       // Inactive state on DARK pages
               }`}
             >
@@ -222,8 +223,8 @@ const Navbar = () => {
           >
             <button className={`flex items-center gap-1 px-4 py-2 text-sm uppercase tracking-widest font-semibold transition-colors duration-300 ${
               isAboutActive 
-                ? isWhitePage ? "text-orange-600 font-black" : "text-white font-black" 
-                : isWhitePage ? "text-slate-500 hover:text-orange-600" : "text-gray-200 group-hover:text-white"
+                ? isWhitePage ? "text-orange-500 font-black" : "text-white font-black" 
+                : isWhitePage ? "text-slate-400 hover:text-orange-500" : "text-gray-200 group-hover:text-white"
             }`}>
               About <HiChevronDown className={`transition-transform duration-300 ${isAboutOpen ? "rotate-180" : ""}`} />
             </button>

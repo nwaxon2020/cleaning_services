@@ -77,7 +77,13 @@ const SmartReviewSection = () => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+      // FIX: Only authorize the user for reviews if they have an email address
+      // This prevents phone-only guests from being able to post or see the "Your Review" state
+      if (currentUser && currentUser.email) {
+        setUser(currentUser);
+      } else {
+        setUser(null);
+      }
     });
     fetchRealReviews();
     return () => unsubscribe();

@@ -35,12 +35,17 @@ export default function ChatUi() {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      if (u && u.uid !== ADMIN_ID) {
-        setActiveRoomId(u.uid);
-        setMobileView('chat');
-      } else if (!u) {
-        // Clear active room and messages on logout to prevent ghost renders
+      // FIX: Only authorize the user if they have an email address
+      // This ignores the temporary phone-only session from the booking modal
+      if (u && u.email) {
+        setUser(u);
+        if (u.uid !== ADMIN_ID) {
+          setActiveRoomId(u.uid);
+          setMobileView('chat');
+        }
+      } else {
+        // Treat phone-only guests or logged-out states as "null"
+        setUser(null);
         setActiveRoomId(null);
         setMessages([]);
       }
