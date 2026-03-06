@@ -162,11 +162,29 @@ const Navbar = () => {
     <nav className={`fixed left-0 right-0 z-[30] transition-all duration-500 ease-in-out ${scrolled ? "top-2 px-3" : "top-0 px-0"}`}>
       <div className={`max-w-7xl mx-auto transition-all duration-500 px-4 md:px-10 flex justify-between items-center ${scrolled ? "bg-black/90 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl h-14 md:h-16" : "bg-black/20 md:bg-transparent h-16 md:h-20 border-transparent"}`}>
         
-        <Link href="/" className="group flex items-center gap-1 shrink-0">
-          <span className="text-xl md:text-2xl font-black tracking-tighter text-white">
-            <span className="inline md:hidden">B<span className="text-orange-500">C</span></span>
-            <span className="hidden md:inline">BOSTON<span className="text-orange-500 group-hover:text-orange-400 transition-colors">CLEAN</span></span>
-          </span>
+        <Link href="/" className="group flex items-center gap-2 shrink-0">
+          {/* LOGO IMAGE */}
+          <img 
+            src="/favicon.png" 
+            alt="BostonClean Logo" 
+            className="w-8 h-8 md:w-11 md:h-11 rounded-full object-contain transition-transform group-hover:scale-110 duration-300"
+          />
+
+          {/* TEXT CONTAINER */}
+          <div className="flex flex-col justify-center">
+            {/* TITLE */}
+            <span className="text-[10px] md:text-xl font-black tracking-tighter text-white leading-none uppercase">
+              BOSTON<span className="text-orange-500 group-hover:text-orange-400 transition-colors">CLEAN</span>
+            </span>
+
+            {/* SEPARATOR LINE */}
+            <div className="w-full h-[1px] bg-white/20 mt-1 mb-1 group-hover:bg-orange-500/50 transition-colors" />
+
+            {/* SUBTITLE */}
+            <span className="text-[8px] md:text-[10px] font-bold tracking-[0.2em] text-zinc-500 uppercase leading-none italic">
+              Premier Cleaning
+            </span>
+          </div>
         </Link>
 
         {/* Desktop Links */}
@@ -216,7 +234,7 @@ const Navbar = () => {
                     <Link key={link.name} href={link.href} className={`block px-4 py-2 text-[10px] uppercase font-black tracking-widest transition-colors ${
                       pathname === link.href 
                         ? "text-orange-500 bg-orange-500/5" 
-                        : isWhitePage ? "text-slate-600 hover:bg-slate-50 hover:text-orange-500" : "text-gray-300 hover:bg-white/5 hover:text-white"
+                        : isWhitePage ? "text-slate-600 hover:bg-slate-50 hover:text-orange-500" : "text-gray-300 hover:bg-orange-500/50 hover:text-white"
                     }`}>
                       {link.name}
                     </Link>

@@ -58,9 +58,31 @@ const Footer = () => {
           {/* Company & Auth Section */}
           <div className="space-y-8">
             <div>
-              <h3 className="text-2xl font-black mb-4 uppercase tracking-tighter">
-                Boston<span className="text-orange-500">Clean</span>
-              </h3>
+              {/* LOGO AND TITLE */}
+              <div className="mb-2 flex items-center gap-1 md:gap-3">
+                {/* LOGO IMAGE */}
+                <img 
+                  src="/favicon.png" 
+                  alt="BostonClean Logo" 
+                  className="w-8 h-8 md:w-10 md:h-10 object-contain rounded-full"
+                />
+
+                <div className="flex flex-col">
+                  {/* TITLE */}
+                  <h3 className="text-[10px] md:text-2xl font-black uppercase tracking-tighter leading-none">
+                    Boston<span className="text-orange-500">Clean</span>
+                  </h3>
+
+                  {/* UNDERLINE SEPARATOR */}
+                  <div className="w-full h-[1px] bg-zinc-800 my-1 md:my-1.5" />
+
+                  {/* SUBTITLE */}
+                  <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 leading-none italic">
+                    Premier Cleaning
+                  </p>
+                </div>
+              </div>
+
               <p className="text-gray-400 text-sm leading-relaxed">
                 Making Boston sparkle. Professional eco-friendly cleaning services you can trust.
               </p>

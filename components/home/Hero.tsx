@@ -8,9 +8,9 @@ import QuickBooking from "../booking/QuickBooking";
 
 // Edit this list to add or change images
 const HERO_IMAGES = [
-  "https://static.vecteezy.com/system/resources/thumbnails/069/923/000/small/professional-african-american-man-cleaning-office-desk-with-cloth-and-cleaning-supplies-photo.jpeg",
   "https://maidinparadiseflorida.com/wp-content/uploads/2024/02/cheerful-black-lady-holding-bucket-of-cleaning-sup-2023-11-27-05-24-08-utc1.png",
   "https://img.freepik.com/free-photo/professional-cleaning-service-person-using-vacuum-cleaner-office_23-2150520631.jpg",
+  "https://static.vecteezy.com/system/resources/thumbnails/069/923/000/small/professional-african-american-man-cleaning-office-desk-with-cloth-and-cleaning-supplies-photo.jpeg",
   "https://thecleaningladies.ca/media/images/action-shot3.jpg?width=768&height=550&loading=eager",
 ];
 
