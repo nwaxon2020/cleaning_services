@@ -276,9 +276,9 @@ const Navbar = () => {
               <HiAdjustments size={20} />
             </Link>
           ): (
-            <Link href="tel:+1234567890" className={`hidden md:flex items-center gap-2 p-2 underline bg-black/90 rounded-lg text-gray-50 text-sm hover:bg-gray-900 transition-colors`}>
+            <Link href="tel:+447565123627" className={`hidden md:flex items-center gap-2 p-2 underline bg-black/90 rounded-lg text-gray-50 text-sm hover:bg-gray-900 transition-colors`}>
               <FaHeadset size={16} className="text-white" /> 
-              <span>+44 201 234 567</span>
+              <span>+44 7565 12 3627</span>
             </Link>
           )}
 
