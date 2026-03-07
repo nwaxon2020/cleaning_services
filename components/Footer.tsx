@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FaFacebook, FaTwitter, FaInstagram, FaEnvelope, FaPhone, FaMapMarkerAlt, FaGoogle } from 'react-icons/fa';
-import { HiLogout, HiMail } from 'react-icons/hi';
+import { FaFacebook, FaTwitter, FaInstagram, FaGoogle, FaMapMarkerAlt } from 'react-icons/fa';
+import { HiLogout, HiMail, HiTrash } from 'react-icons/hi';
 import { auth } from '@/lib/firebase';
 import { 
   onAuthStateChanged, 
@@ -17,16 +17,21 @@ import toast from 'react-hot-toast';
 
 const Footer = () => {
   const [user, setUser] = useState<User | null>(null);
+  const [isEmailUser, setIsEmailUser] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      // FIX: Only set the user if they have an email address
-      // This prevents phone-only guests from triggering the "Active Session" UI
       if (currentUser && currentUser.email) {
         setUser(currentUser);
+        // Check if the user has "password" in their provider data
+        const hasPasswordProvider = currentUser.providerData.some(
+          (provider) => provider.providerId === 'password'
+        );
+        setIsEmailUser(hasPasswordProvider);
       } else {
         setUser(null);
+        setIsEmailUser(false);
       }
     });
     return () => unsubscribe();
@@ -43,7 +48,6 @@ const Footer = () => {
   };
 
   const handleEmailRedirect = () => {
-    // Send user to your custom black login card page
     router.push('/login');
   };
 
@@ -64,31 +68,22 @@ const Footer = () => {
           {/* Company & Auth Section */}
           <div className="space-y-8">
             <div>
-              {/* LOGO AND TITLE */}
               <div className="mb-2 flex items-center gap-1 md:gap-3">
-                {/* LOGO IMAGE */}
                 <img 
                   src="/favicon.png" 
                   alt="BristolClean Logo" 
                   className="w-8 h-8 md:w-10 md:h-10 object-contain rounded-full"
                 />
-
                 <div className="flex flex-col">
-                  {/* TITLE */}
                   <h3 className="text-[10px] md:text-2xl font-black uppercase tracking-tighter leading-none">
                     Bristol<span className="text-orange-500">Clean</span>
                   </h3>
-
-                  {/* UNDERLINE SEPARATOR */}
                   <div className="w-full h-[1px] bg-zinc-800 my-1 md:my-1.5" />
-
-                  {/* SUBTITLE */}
                   <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 leading-none italic">
                     Premier Cleaning
                   </p>
                 </div>
               </div>
-
               <p className="text-gray-400 text-sm leading-relaxed">
                 Making Bristol sparkle. Professional eco-friendly cleaning services you can trust.
               </p>
@@ -98,7 +93,6 @@ const Footer = () => {
               <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500">Member Access</h4>
               {!user ? (
                 <div className="flex flex-col gap-3">
-                  {/* Email Redirect Button */}
                   <button 
                     onClick={handleEmailRedirect}
                     className="w-full flex items-center justify-center gap-3 bg-white/5 border border-white/10 text-white py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-white/10 transition-all"
@@ -106,7 +100,6 @@ const Footer = () => {
                     <HiMail size={18} className="text-orange-500" /> Email & Password Login
                   </button>
 
-                  {/* Google Instant Auth Button */}
                   <button 
                     onClick={handleGoogleAuth}
                     className="w-full flex items-center justify-center gap-3 bg-white text-black py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-orange-500 hover:text-white transition-all shadow-lg"
@@ -118,12 +111,25 @@ const Footer = () => {
                 <div className="flex flex-col gap-2 p-4 bg-white/5 rounded-xl border border-white/5">
                   <p className="text-[10px] uppercase font-black text-green-500 tracking-widest">Active Session</p>
                   <p className="text-xs text-white truncate mb-2">{user.email}</p>
-                  <button 
-                    onClick={handleSignOut}
-                    className="flex items-center gap-2 text-red-500 hover:text-red-400 text-[10px] font-black uppercase tracking-widest transition-colors"
-                  >
-                    <HiLogout size={14} /> Sign Out
-                  </button>
+                  
+                  <div className="flex items-center justify-between">
+                    <button 
+                      onClick={handleSignOut}
+                      className="flex items-center gap-2 text-red-500 hover:text-red-400 text-[10px] font-black uppercase tracking-widest transition-colors"
+                    >
+                      <HiLogout size={14} /> Sign Out
+                    </button>
+
+                    {/* DYNAMIC DATA DELETION LINK */}
+                    {isEmailUser && (
+                      <Link 
+                        href="/settings/delete-account" 
+                        className="flex items-center gap-1 text-zinc-500 hover:text-red-500 text-[9px] font-black uppercase tracking-tighter transition-colors"
+                      >
+                        <HiTrash size={12} /> Delete Data
+                      </Link>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -140,7 +146,7 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Services */}
+          {/* Expertises */}
           <div>
             <h4 className="text-xs font-black mb-6 text-orange-500 uppercase tracking-[0.2em]">Expertise</h4>
             <ul className="space-y-3 text-sm text-gray-400">
@@ -153,7 +159,7 @@ const Footer = () => {
 
           {/* Social & Contact */}
           <div className="space-y-6">
-            <h4 className="text-xs font-black text-orange-500 uppercase tracking-[0.2em]">Location</h4>
+            <h4 className="text-xs font-black text-orange-500 uppercase tracking-[0.2em]">Connect</h4>
             <div className="flex space-x-4">
               <a href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-orange-500 hover:text-white transition-all">
                 <FaFacebook size={18} />
@@ -167,7 +173,7 @@ const Footer = () => {
             </div>
             <div className="pt-2">
               <p className="text-gray-400 text-xs flex items-center gap-3">
-                <FaMapMarkerAlt className="text-orange-500" /> Bristol, Lincolnshire, UK
+                <FaMapMarkerAlt className="text-orange-500" /> Bristol, United Kingdom
               </p>
             </div>
           </div>
