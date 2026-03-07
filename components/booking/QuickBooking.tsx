@@ -1,320 +1,387 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { db, auth } from "@/lib/firebase"; 
-import { 
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  doc, 
-  setDoc, 
-  updateDoc, 
-  serverTimestamp 
+import { db, auth } from "@/lib/firebase";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  updateDoc,
 } from "firebase/firestore";
-import { 
-  RecaptchaVerifier, 
-  signInWithPhoneNumber, 
-  sendSignInLinkToEmail,
-  isSignInWithEmailLink,
-  signInWithEmailLink,
-  ConfirmationResult,
-  onAuthStateChanged
-} from "firebase/auth";
-import { 
-  HiCalendar, 
-  HiCheckCircle, 
-  HiShieldCheck, 
-  HiCreditCard, 
-  HiMail, 
-  HiChatAlt2,
-  HiLocationMarker
-} from "react-icons/hi";
+import { onAuthStateChanged } from "firebase/auth";
+import { FaSpinner, FaPlusCircle, FaMinusCircle, FaArrowLeft, FaCheckCircle, FaReceipt, FaCalendarAlt, FaPaw, FaUndo, FaLock, FaExclamationTriangle } from "react-icons/fa";
+import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
-// --- Fix for the window.recaptchaVerifier error ---
-declare global {
-  interface Window {
-    recaptchaVerifier: RecaptchaVerifier;
-  }
-}
+// --- SUB-COMPONENT: AvailabilityGrid ---
+const AvailabilityGrid = ({ selectedDate, onSelect, currentSlot }: any) => {
+  const [busySlots, setBusySlots] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const TIME_SLOTS = ["6 - 8", "9 - 12", "1 - 4", "5 - 6", "7 - 9"];
 
-// --- Interfaces for Type Safety ---
-interface FormData {
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-  service: string;
-}
+  useEffect(() => {
+    if (!selectedDate) return;
+    
+    const fetchBusySlots = async () => {
+      setLoading(true);
+      try {
+        const q = query(collection(db, "bookings"), where("bookingDate", "==", selectedDate));
+        const snap = await getDocs(q);
+        setBusySlots(snap.docs.map(d => d.data().bookingTime));
+      } catch (e) {
+        console.error("Availability sync error:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBusySlots();
+  }, [selectedDate]);
 
-interface Booking {
-  id: string;
-  date: string;
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-  service: string;
-  status: string;
-}
+  if (loading) return <div className="py-4 flex justify-center"><FaSpinner className="animate-spin text-orange-500" /></div>;
+
+  return (
+    <div className="grid grid-cols-5 gap-1.5 mt-2">
+      {TIME_SLOTS.map(slot => {
+        const isTaken = busySlots.includes(slot);
+        const isSelected = currentSlot === slot;
+        return (
+          <button
+            key={slot}
+            type="button"
+            disabled={isTaken}
+            onClick={() => onSelect(slot)}
+            className={`py-4 rounded-lg text-xs font-black transition-all border flex flex-col items-center justify-center gap-1 ${
+              isTaken ? 'bg-red-500/30 border-red-500/20 text-red-500 cursor-not-allowed' :
+              isSelected ? 'bg-orange-500 border-orange-500 text-white shadow-lg' : 'bg-white/5 border-white/10 text-white hover:border-orange-500'
+            }`}
+          >
+            {isTaken && <FaLock size={8} />}
+            {slot}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+const ROOM_TYPES = [
+  { id: 'bedroom', label: 'Bedrooms', price: 35, category: ['home', 'deep', 'end-of-tenancy', 'office'] },
+  { id: 'bathroom', label: 'Bathroom', price: 25, category: ['home', 'deep', 'end-of-tenancy'] },
+  { id: 'kitchen', label: 'Kitchen', price: 45, category: ['home', 'deep', 'end-of-tenancy', 'office'] },
+  { id: 'living', label: 'Living Room', price: 30, category: ['home', 'deep', 'end-of-tenancy', 'office'] },
+  { id: 'office', label: 'Office Room', price: 25, category: ['office', 'deep', 'end-of-tenancy'] },
+  { id: 'window_int', label: 'Int. Windows', price: 12, category: ['windows', 'home', 'office', 'deep'] },
+  { id: 'driveway', label: 'Driveway', price: 60, category: ['compound'] },
+  { id: 'oven', label: 'Oven Scrub', price: 35, category: ['oven', 'deep'] },
+];
+
+const SERVICES_LIST = [
+  { id: 'home', name: 'Home Cleaning', basePrice: 40 },
+  { id: 'office', name: 'Office Cleaning', basePrice: 35 },
+  { id: 'deep', name: 'Deep Cleaning', basePrice: 60 },
+  { id: 'compound', name: 'Compound Cleaning', basePrice: 50 },
+  { id: 'oven', name: 'Oven Scrub', basePrice: 55 },
+];
+
+const TIME_SLOTS = ["6 - 8", "9 - 12", "1 - 4", "5 - 6", "7 - 9"];
 
 const QuickBooking = () => {
-  const [step, setStep] = useState<number>(1);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [formData, setFormData] = useState<FormData>({ name: "", email: "", phone: "", address: "", service: "" });
-  const [verificationPath, setVerificationPath] = useState<"phone" | "email" | null>(null);
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  const [otpCode, setOtpCode] = useState<string>("");
-  const [existingBooking, setExistingBooking] = useState<Booking | null>(null);
-  const [availableDates, setAvailableDates] = useState<string[]>([]);
-  const [paymentStatus, setPaymentStatus] = useState<"idle" | "processing" | "success">("idle");
+  const router = useRouter();
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    service: "",
+    date: "",
+    time: "",
+    hasPets: false,
+    notes: ""
+  });
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [existingBooking, setExistingBooking] = useState<any>(null);
+  const [tempHiddenBooking, setTempHiddenBooking] = useState<any>(null);
+  const [otherBookingsCount, setOtherBookingsCount] = useState(0);
 
-  const prices: Record<string, number> = { home: 40, office: 35, deep: 50 };
-
-  // --- Initialize Recaptcha and Auth Listener ---
+  // LOGIC: Sync User Auth and Fetch/Sort existing bookings 
+  // BUG FIX: Added explicit logout handling and check for user existence before query
   useEffect(() => {
-    if (typeof window !== "undefined" && !window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
-        size: "invisible",
-      });
-    }
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // User is logged in
+        setFormData((prev: any) => ({ 
+            ...prev, 
+            email: user.email || "", 
+            name: user.displayName || prev.name 
+        }));
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user && user.email) {
-        setFormData(prev => ({ ...prev, email: user.email!, name: user.displayName || "" }));
+        try {
+          const q = query(collection(db, "bookings"), where("userEmail", "==", user.email));
+          const snapshot = await getDocs(q);
+          
+          if (!snapshot.empty) {
+            const allBookings = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            const todayStr = new Date().toISOString().split('T')[0];
+            
+            const futureBookings = allBookings
+              .filter((b: any) => b.bookingDate >= todayStr)
+              .sort((a: any, b: any) => {
+                const dateCompare = a.bookingDate.localeCompare(b.bookingDate);
+                if (dateCompare !== 0) return dateCompare;
+                const timeA = TIME_SLOTS.indexOf(a.bookingTime);
+                const timeB = TIME_SLOTS.indexOf(b.bookingTime);
+                return timeA - timeB;
+              });
+
+            if (futureBookings.length > 0) {
+              setExistingBooking(futureBookings[0]);
+              setOtherBookingsCount(futureBookings.length - 1);
+            } else {
+              setExistingBooking(null);
+              setOtherBookingsCount(0);
+            }
+          }
+        } catch (error) {
+          console.error("Firestore Permission Error handled:", error);
+        }
+      } else {
+        // LOGIC: User logged out - RESET all personal data to prevent cross-account viewing
+        setExistingBooking(null);
+        setOtherBookingsCount(0);
+        setTempHiddenBooking(null);
+        setFormData({
+          name: "",
+          email: "",
+          phone: "",
+          address: "",
+          service: "",
+          date: "",
+          time: "",
+          hasPets: false,
+          notes: ""
+        });
       }
     });
-
     return () => unsubscribe();
   }, []);
 
-  // --- Handle Email Magic Link ---
-  useEffect(() => {
-    if (isSignInWithEmailLink(auth, window.location.href)) {
-      let email = window.localStorage.getItem('emailForSignIn');
-      if (!email) {
-        email = window.prompt('Please provide your email for confirmation');
-      }
-      if (email) {
-        setLoading(true);
-        signInWithEmailLink(auth, email, window.location.href)
-          .then(() => {
-            window.localStorage.removeItem('emailForSignIn');
-            setStep(existingBooking ? 5 : 4);
-          })
-          .catch(() => alert("Verification link expired."))
-          .finally(() => setLoading(false));
-      }
-    }
-  }, [existingBooking]);
+  const selectedServiceData = SERVICES_LIST.find(s => s.id === formData.service);
+  const filteredRooms = ROOM_TYPES.filter(r => r.category.includes(formData.service));
+  const subtotal = filteredRooms.reduce((acc, r) => acc + (counts[r.id] || 0) * r.price, 0) + (selectedServiceData?.basePrice || 0);
+  const vatAmount = subtotal * 0.2;
+  const total = subtotal + vatAmount;
 
-  const fetchAvailableDates = async () => {
-    setLoading(true);
-    const nextTwoWeeks = Array.from({ length: 14 }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() + i + 1);
-      return d.toISOString().split("T")[0];
-    });
-    
-    try {
-      const q = collection(db, "bookings");
-      const querySnapshot = await getDocs(q);
-      const booked = querySnapshot.docs.map(doc => doc.data().date);
-      setAvailableDates(nextTwoWeeks.filter(date => !booked.includes(date)));
-    } catch (err) {
-      console.error(err);
-    }
-    setLoading(false);
+  const isRescheduleLocked = () => {
+    if (!formData.date) return false;
+    const diff = (new Date(formData.date).getTime() - new Date().getTime()) / (1000 * 60 * 60);
+    return diff < 48;
   };
 
-  const handleInitialCheck = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const q = query(
-        collection(db, "bookings"), 
-        where("phone", "==", formData.phone), 
-        where("email", "==", formData.email)
-      );
-      const snapshot = await getDocs(q);
-      
-      if (!snapshot.empty) {
-        const data = snapshot.docs[0].data();
-        setExistingBooking({ id: snapshot.docs[0].id, ...data } as Booking);
-      }
+  const checkAvailability = async (date: string, time: string) => {
+    const q = query(collection(db, "bookings"), where("bookingDate", "==", date), where("bookingTime", "==", time));
+    const snapshot = await getDocs(q);
+    return snapshot.empty;
+  };
+
+  const handleNextStep = async () => {
+    if (step === 1) {
+      if (!formData.name || !formData.email || !formData.service || !formData.phone || !formData.address) return toast.error("Fill all fields");
       setStep(2);
-    } catch (err) {
-      console.error(err);
+    } else if (step === 2) {
+      setStep(3);
     }
-    setLoading(false);
   };
 
-  const sendVerification = async (path: "phone" | "email") => {
+  const handleFinalBooking = async () => {
+    if (!formData.date) return toast.error("Please select a date");
+    if (!formData.time) return toast.error("Please select a time slot");
+    if (step === 5 && isRescheduleLocked()) return toast.error("Notice too short (48h required)");
+    
     setLoading(true);
-    setVerificationPath(path);
-    try {
-      if (path === "phone") {
-        const result = await signInWithPhoneNumber(auth, formData.phone, window.recaptchaVerifier);
-        setConfirmationResult(result);
-        setStep(3);
-      } else {
-        const actionCodeSettings = { url: window.location.origin, handleCodeInApp: true };
-        await sendSignInLinkToEmail(auth, formData.email, actionCodeSettings);
-        window.localStorage.setItem('emailForSignIn', formData.email);
-        setStep(3);
-      }
-    } catch (err) {
-      alert("Verification failed. Use international format (+44...)");
+    const isAvailable = await checkAvailability(formData.date, formData.time);
+    if (!isAvailable) {
+      setLoading(false);
+      return toast.error("Slot taken. Pick another.");
     }
-    setLoading(false);
-  };
 
-  const verifyOtp = async () => {
-    setLoading(true);
     try {
-      if (confirmationResult) {
-        await confirmationResult.confirm(otpCode);
-        existingBooking ? setStep(5) : setStep(4);
-      }
-    } catch {
-      alert("Invalid Code");
-    }
-    setLoading(false);
-  };
-
-  const handleFinalAction = async (selectedDate: string) => {
-    setLoading(true);
-    try {
-      if (existingBooking) {
-        const bookingRef = doc(db, "bookings", existingBooking.id);
-        await updateDoc(bookingRef, { date: selectedDate, updatedAt: serverTimestamp() });
-        alert("Rescheduled Successfully!");
-      } else {
-        const bookingRef = doc(collection(db, "bookings"));
-        await setDoc(bookingRef, { 
-          ...formData, 
-          date: selectedDate, 
-          status: "paid", 
-          createdAt: serverTimestamp() 
+      if (existingBooking && step === 5) {
+        await updateDoc(doc(db, "bookings", existingBooking.id), { 
+            bookingDate: formData.date,
+            bookingTime: formData.time 
         });
-        alert("Booking Successful!");
+        toast.success("Rescheduled Successfully");
+        router.push(`/receipts/${existingBooking.id}`);
+      } else {
+        const quickBookingData = {
+          fullName: formData.name,
+          userEmail: formData.email,
+          phoneNumber: formData.phone,
+          address: formData.address,
+          serviceCategory: formData.service,
+          bookingDate: formData.date,
+          bookingTime: formData.time,
+          hasPets: formData.hasPets,
+          jobNotes: formData.notes,
+          roomCounts: counts,
+        };
+        localStorage.setItem('quickBookingData', JSON.stringify(quickBookingData));
+        toast.success("Details saved! Finalize your payment.");
+        router.push('/services'); 
       }
-      setStep(1);
-    } catch (err) {
-      console.error(err);
+    } catch (e) {
+      toast.error("Error processing booking");
     }
     setLoading(false);
   };
 
   return (
-    <div className="-mt-10 bg-white/10 backdrop-blur-lg rounded-xl p-4 md:p-6 border border-white/20">
-      <div id="recaptcha-container"></div>
-      
+    <div className="-mt-2 md:-mt-10 bg-black/20 backdrop-blur-lg rounded-2xl p-4 md:p-6 border border-white/20 w-full min-h-[400px] flex flex-col justify-between overflow-hidden">
       <AnimatePresence mode="wait">
-        {step === 1 && (
-          <motion.div key="s1" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <h3 className="text-2xl font-bold text-white mb-6 tracking-tight">Quick Booking</h3>
-            <form onSubmit={handleInitialCheck} className="space-y-4 text-left">
-              <input required type="text" placeholder="Name" value={formData.name} className="booking-input" onChange={e => setFormData({...formData, name: e.target.value})} />
-              <input required type="email" placeholder="Email" value={formData.email} className="booking-input" onChange={e => setFormData({...formData, email: e.target.value})} />
-              <input required type="tel" placeholder="Phone (+44...)" className="booking-input" onChange={e => setFormData({...formData, phone: e.target.value})} />
-              <input required type="text" placeholder="Full Address" className="booking-input" onChange={e => setFormData({...formData, address: e.target.value})} />
-              <select required className="w-full p-[0.59rem] bg-[rgba(37, 6, 6, 0.05)] border-1 border-solid-[rgba(255,255,255,0.1)] rounded-lg text-white outline-none transition" onChange={e => setFormData({...formData, service: e.target.value})}>
-                <option className="bg-black text-white" value="">Select Service</option>
-                <option className="bg-black text-white" value="home">Home Cleaning</option>
-                <option className="bg-black text-white" value="office">Office Cleaning</option>
-                <option className="bg-black text-white" value="deep">Deep Cleaning</option>
-              </select>
-              <button disabled={loading} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95">
-                {loading ? "Checking..." : "Continue"}
-              </button>
-            </form>
+
+        {/* STEP 1: Booking Details */}
+        {step === 1 && !existingBooking && (
+          <motion.div key="step1" initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -50, opacity: 0 }} className="space-y-4">
+            <div className="flex justify-between items-center">
+                <h3 className="text-xl font-black text-white uppercase italic">Quick Booking</h3>
+                {tempHiddenBooking && (
+                    <button onClick={() => { setExistingBooking(tempHiddenBooking); setTempHiddenBooking(null); }} className="text-[9px] font-black text-orange-500 uppercase flex items-center gap-1 bg-white/5 px-2 py-1 rounded-md hover:bg-white/10"><FaUndo /> Cancel</button>
+                )}
+            </div>
+            <input required type="text" placeholder="Full Name" className="booking-input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+            <input required type="email" placeholder="Email" className="booking-input" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} readOnly={!!auth.currentUser} />
+            <input required type="tel" placeholder="Phone (+44)" className="booking-input" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+            <input required type="text" placeholder="Address" className="booking-input" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
+            <select required className="booking-input bg-slate-900" value={formData.service} onChange={e => setFormData({...formData, service: e.target.value})}>
+              <option value="" className="bg-gray-500 text-gray-100 font-semibold">Select Service</option>
+              {SERVICES_LIST.map(s => <option key={s.id} value={s.id} className="bg-gray-900 text-gray-300">{s.name}</option>)}
+            </select>
+            <button onClick={handleNextStep} className="w-full bg-orange-500 py-4 rounded-xl font-black text-white uppercase tracking-widest text-xs hover:bg-orange-600 transition-all">Select Areas</button>
           </motion.div>
         )}
 
+        {/* SPECIFY AREAS PART */}
         {step === 2 && (
-          <motion.div key="s2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-white text-center">
-            <HiShieldCheck className="text-6xl mx-auto text-orange-500 mb-4" />
-            <h3 className="text-xl font-bold">Verify Identity</h3>
-            <p className="text-gray-400 text-sm mb-6">Choose how to receive your verification</p>
-            <div className="grid gap-4">
-              <button onClick={() => sendVerification("phone")} className="verify-path-btn">
-                <HiChatAlt2 className="text-xl" /> SMS OTP
-              </button>
-              <button onClick={() => sendVerification("email")} className="verify-path-btn">
-                <HiMail className="text-xl" /> Email Link
-              </button>
+          <motion.div key="step2" initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -50, opacity: 0 }} className="space-y-4">
+            <div className="flex items-center gap-3 mb-4">
+              <button onClick={() => setStep(1)} className="text-white"><FaArrowLeft /></button>
+              <h3 className="text-lg font-black text-white uppercase italic">Specify Areas</h3>
             </div>
-          </motion.div>
-        )}
-
-        {step === 3 && (
-          <motion.div key="s3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-white text-center">
-            {verificationPath === "phone" ? (
-              <>
-                <p className="mb-4 text-gray-400">Enter code sent to {formData.phone}</p>
-                <input type="text" maxLength={6} className="booking-input text-center text-2xl tracking-[0.5em]" onChange={e => setOtpCode(e.target.value)} />
-                <button onClick={verifyOtp} className="w-full mt-6 bg-green-500 py-4 rounded-xl font-bold">Verify OTP</button>
-              </>
-            ) : (
-              <div className="py-6">
-                <HiMail className="text-6xl mx-auto text-orange-500 mb-4 animate-pulse" />
-                <p className="text-gray-300">Magic link sent to <b>{formData.email}</b>. Click the link in your email to proceed.</p>
+            <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar space-y-2">
+              {filteredRooms.map(room => (
+                <div key={room.id} className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5">
+                  <span className="text-white text-[10px] font-bold uppercase">{room.label}</span>
+                  <div className="flex items-center gap-4">
+                    <button onClick={() => setCounts({...counts, [room.id]: Math.max(0, (counts[room.id] || 0) - 1)})} className="text-orange-500"><FaMinusCircle size={20}/></button>
+                    <span className="text-white font-bold">{counts[room.id] || 0}</span>
+                    <button onClick={() => setCounts({...counts, [room.id]: (counts[room.id] || 0) + 1})} className="text-orange-500"><FaPlusCircle size={20}/></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="pt-2 border-t border-white/10">
+              <div className="flex flex-row justify-between mb-1 opacity-70">
+                <span className="text-white text-[10px] font-bold uppercase">Fee: £{selectedServiceData?.basePrice || 0}</span>
+                <span className="text-white text-[10px] font-bold uppercase">VAT: £{vatAmount.toFixed(2)}</span>
               </div>
-            )}
+              <div className="flex justify-between text-white text-xs font-bold uppercase"><span>Total:</span><span className="text-white font-black">£{total.toFixed(2)}</span></div>
+            </div>
+            <button onClick={handleNextStep} className="w-full bg-orange-500 py-4 rounded-xl font-black text-white uppercase tracking-widest text-xs">Review Booking</button>
           </motion.div>
         )}
 
-        {step === 4 && (
-          <motion.div key="s4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-white">
-            <h3 className="text-xl font-bold mb-6 text-center">Secure Payment</h3>
-            <div className="bg-white/5 p-6 rounded-2xl mb-8 border border-white/10">
-              <div className="flex justify-between mb-2"><span className="text-gray-400">Cleaning Type:</span><span className="capitalize font-bold">{formData.service}</span></div>
-              <div className="flex justify-between text-3xl font-black mt-4 border-t border-white/10 pt-4"><span>Total:</span><span className="text-orange-500">£{prices[formData.service]}</span></div>
+
+        {/* FINALIZE PART */}
+        {step === 3 && (
+          <motion.div key="step3" initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -50, opacity: 0 }} className="space-y-4">
+            <div className="flex items-center gap-3 mb-2">
+              <button onClick={() => setStep(2)} className="text-white hover:text-orange-500 transition-colors"><FaArrowLeft /></button>
+              <h3 className="text-lg font-black text-white uppercase italic">Finalize</h3>
             </div>
-            <button onClick={() => { fetchAvailableDates(); setStep(5); }} className="w-full bg-orange-500 py-4 rounded-2xl font-black shadow-xl hover:bg-orange-600 transition-all flex items-center justify-center gap-3">
-              <HiCreditCard className="text-xl" /> 
-              {paymentStatus === "processing" ? "Processing..." : "Pay Securely"}
+            <div className="grid grid-cols-4 gap-2">
+                <button onClick={() => setFormData({...formData, hasPets: !formData.hasPets})} className={`col-span-1 rounded-xl flex flex-col items-center justify-center border transition-all ${formData.hasPets ? 'bg-orange-500 border-orange-500 text-white' : 'bg-black/50 border-white/10 text-zinc-400'}`}>
+                  <FaPaw size={14} /><span className="text-[10px] font-black uppercase mt-1">I have Pets</span>
+                </button>
+                <textarea placeholder="Note (e.g., Key safe code)..." className="col-span-3 bg-black/50 border border-black/10 rounded-xl p-2 text-white text-xs outline-none h-[45px] resize-none" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} />
+            </div>
+            <div className="bg-black p-4 rounded-xl border border-white/10 text-white space-y-3 font-bold">
+              <div className="flex justify-between text-[10px] uppercase"><span className="text-slate-300">Service:</span><span className="text-green-300">{selectedServiceData?.name}</span></div>
+              <div className="flex flex-row flex-wrap gap-2 py-2 border-y border-white/5">
+                {filteredRooms.filter(room => (counts[room.id] || 0) > 0).map(room => (
+                  <div key={room.id} className="bg-white/10 px-2 py-1 rounded-md border border-white/10 flex items-center gap-2">
+                    <span className="text-orange-400 text-[9px]">{counts[room.id]}x</span><span className="text-white text-[10px] uppercase">{room.label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between items-center pt-1"><span className="text-[10px] uppercase text-slate-300">Total (Inc. VAT):</span><span className="text-xl font-black italic">£{total.toFixed(2)}</span></div>
+            </div>
+            <div className="space-y-2">
+                <label className="text-white text-[10px] font-black uppercase">Live Availability</label>
+                <input type="date" className="booking-input" min={new Date().toISOString().split("T")[0]} value={formData.date} onChange={e => setFormData({...formData, date: e.target.value, time: ""})} required />
+                {formData.date && <AvailabilityGrid selectedDate={formData.date} currentSlot={formData.time} onSelect={(s: any) => setFormData({...formData, time: s})} />}
+            </div>
+            <button onClick={handleFinalBooking} disabled={loading || !formData.time} className={`w-full py-4 rounded-xl font-black text-white uppercase tracking-widest text-xs flex justify-center items-center gap-2 transition-all ${!formData.time ? 'bg-gray-700 opacity-50 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600'}`}>
+              {loading ? <FaSpinner className="animate-spin" /> : "Proceed to Payment"}
             </button>
           </motion.div>
         )}
 
-        {step === 5 && (
-          <motion.div key="s5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-white">
-             {existingBooking ? (
-               <div className="text-center py-6">
-                  <HiCheckCircle className="text-7xl text-green-500 mx-auto mb-4" />
-                  <h3 className="text-xl font-bold">Active Appointment</h3>
-                  <div className="bg-orange-500/10 p-6 rounded-2xl my-6 border border-orange-500/20">
-                    <p className="text-orange-500 text-3xl font-black tracking-tight">{existingBooking.date}</p>
-                  </div>
-                  <button onClick={() => { setExistingBooking(null); fetchAvailableDates(); }} className="text-sm text-gray-400 underline hover:text-white transition-colors">Reschedule This Cleaning</button>
-               </div>
-             ) : (
-               <div className="space-y-4">
-                <h3 className="font-bold text-center mb-6">Select Available Date</h3>
-                <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                  {availableDates.map(date => (
-                    <button key={date} onClick={() => handleFinalAction(date)} className="p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-orange-500 transition-all font-bold text-sm">
-                      {new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                    </button>
-                  ))}
+        {/* EXISTING BOOKING PART */}
+        {existingBooking && step === 1 && (
+          <motion.div key="existing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full flex flex-col items-center justify-center space-y-6">
+            <div className="text-center relative">
+              <FaCheckCircle className="text-orange-500 text-5xl mx-auto mb-4" />
+              {otherBookingsCount > 0 && (
+                <div className="absolute -top-2 -right-12 bg-orange-600 text-white text-[8px] font-black px-2 py-1 rounded-full border-2 border-slate-900 animate-bounce">
+                  + {otherBookingsCount} OTHER SCHEDULES
                 </div>
-               </div>
-             )}
+              )}
+              <h3 className="text-white font-black uppercase italic text-xl leading-tight">Next Service: <br/><span className="text-orange-400">{existingBooking.service}</span></h3>
+              <p className="text-slate-200 text-[10px] mt-2 font-bold uppercase tracking-widest">{existingBooking.bookingDate} ({existingBooking.bookingTime})</p>
+            </div>
+            <div className="flex flex-col w-full gap-3">
+              <button onClick={() => router.push(`/receipts/${existingBooking.id}`)} className="flex items-center justify-center gap-2 w-full bg-white text-slate-900 py-4 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 transition-all"><FaReceipt /> View Current Receipt</button>
+              <button onClick={() => { setStep(5); setFormData({...formData, service: existingBooking.serviceCategory}) }} className="flex items-center justify-center gap-2 w-full bg-black text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-gray-900 transition-all"><FaCalendarAlt /> Reschedule Appointment</button>
+              <button onClick={() => { setTempHiddenBooking(existingBooking); setExistingBooking(null); setStep(1); }} className="inline rounded-xl p-4 bg-gray-900 text-zinc-200 text-[10px] font-black uppercase underline decoration-orange-500 underline-offset-4 hover:text-white transition-colors">Book Another Service</button>
+            </div>
           </motion.div>
         )}
-      </AnimatePresence>
 
-      <style jsx>{`
-        .booking-input { width: 100%; padding: 0.5rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.5rem; color: white; outline: none; transition: border 0.3s; }
-        .booking-input:focus { border-color: #f97316; }
-        .verify-path-btn { width: 100%; padding: 1.25rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.75rem; font-weight: 600; color: white; transition: all 0.2s; }
-        .verify-path-btn:hover { border-color: #f97316; background: rgba(255,255,255,0.1); }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
-      `}</style>
+        {/* RESCHEDULE DATE PART */}
+        {step === 5 && (
+            <motion.div key="reschedule" initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="space-y-6">
+               <div className="flex items-center gap-3">
+                 <button onClick={() => setStep(1)} className="text-white"><FaArrowLeft /></button>
+                 <h3 className="text-lg font-black text-white uppercase italic">Reschedule</h3>
+               </div>
+               <div className="space-y-4 bg-black/50 p-4 rounded-xl border border-white/10">
+                 <label className="text-white text-[10px] font-black uppercase tracking-widest">New Date & Time</label>
+                 <input type="date" className="booking-input" min={new Date().toISOString().split("T")[0]} value={formData.date} onChange={e => setFormData({...formData, date: e.target.value, time: ""})} required />
+                 {isRescheduleLocked() ? (
+                    <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3">
+                        <FaExclamationTriangle className="text-red-500 shrink-0" />
+                        <p className="text-[10px] text-red-200 font-bold uppercase leading-tight">Notice too short. 48 hours required to reschedule.</p>
+                    </div>
+                 ) : (
+                    // LOGIC: Show availability grid only if selected date is valid and not locked for rescheduling
+                    formData.date && <div>
+                      <small className="text-orange-400 text-xs font-bold">Available dates</small>
+                      <AvailabilityGrid selectedDate={formData.date} currentSlot={formData.time} onSelect={(s: any) => setFormData({...formData, time: s})} />
+                    </div>
+                 )}
+               </div>
+               <button onClick={handleFinalBooking} disabled={loading || !formData.time || isRescheduleLocked()} className={`w-full py-4 rounded-xl font-black text-white uppercase tracking-widest text-xs flex justify-center items-center ${(!formData.time || isRescheduleLocked()) ? 'bg-gray-700 opacity-50 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600'}`}>
+                  {loading ? <FaSpinner className="animate-spin" /> : "Confirm New Schedule"}
+               </button>
+            </motion.div>
+        )}
+      </AnimatePresence>
+      <style jsx>{`.booking-input { width: 100%; padding: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.75rem; color: white; font-weight: 700; font-size: 12px; outline: none; }.booking-input:focus { border-color: #f97316; }`}</style>
     </div>
   );
 };

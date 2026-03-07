@@ -26,7 +26,7 @@ import toast from "react-hot-toast";
 import { useRouter, usePathname } from "next/navigation";
 
 // --- CONFIGURABLE BACKGROUND IMAGE ---
-const SECTION_BG_IMAGE = "https://img.freepik.com/free-photo/group-happy-african-volunteers-with-garbage-bags-cleaning-area-park-africa-volunteering-charity-people-ecology-concept_627829-351.jpg?semt=ais_rp_progressive&w=740&q=80"; 
+const SECTION_BG_IMAGE = "/bg_review.jpg"; 
 
 interface Review {
   id: string;

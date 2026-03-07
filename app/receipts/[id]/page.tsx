@@ -40,7 +40,7 @@ export default function BookingSuccess() {
         
         {/* X to Cancel/Close */}
         <button 
-          onClick={() => router.push('/services')}
+          onClick={() => router.back()}
           className="absolute top-4 right-4 z-10 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors"
         >
           <FaTimes size={14} />

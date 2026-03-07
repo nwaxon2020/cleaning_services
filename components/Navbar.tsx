@@ -9,7 +9,7 @@ import UserAvatar from "@/components/auth/UserAvatar";
 import { auth, storage, db } from "@/lib/firebase"; 
 import { onAuthStateChanged, User, signOut, updateProfile } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { doc, updateDoc, collection, query, where, getDocs, addDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
+import { doc, setDoc, collection, query, where, getDocs, addDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
 import toast from "react-hot-toast";
 
 const Navbar = () => {
@@ -118,31 +118,43 @@ const Navbar = () => {
   };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file || !user) return;
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
 
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Image too large (Max 5MB)");
-        return;
-      }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image too large (Max 5MB)");
+      return;
+    }
 
-      setUploading(true);
-      const storageRef = ref(storage, `profiles/${user.uid}/avatar`);
+    setUploading(true);
+    const storageRef = ref(storage, `profiles/${user.uid}/avatar`);
+    
+    try {
+      const metadata = { contentType: file.type };
+      const snapshot = await uploadBytes(storageRef, file, metadata);
+      const downloadURL = await getDownloadURL(snapshot.ref);
       
-      try {
-        const metadata = { contentType: file.type };
-        const snapshot = await uploadBytes(storageRef, file, metadata);
-        const downloadURL = await getDownloadURL(snapshot.ref);
-        await updateProfile(user, { photoURL: downloadURL });
-        const userRef = doc(db, "users", user.uid);
-        await updateDoc(userRef, { photoURL: downloadURL });
-        toast.success("Avatar updated!");
-        window.location.reload();
-      } catch (error: any) {
-        toast.error("Upload failed: " + (error.message || "Unknown error"));
-      } finally {
-        setUploading(false);
-      }
+      // Update Firebase Auth profile
+      await updateProfile(user, { photoURL: downloadURL });
+      
+      // FIX: Use setDoc with merge instead of updateDoc
+      // This will create the document if it doesn't exist, or update if it does
+      const userRef = doc(db, "users", user.uid);
+      await setDoc(userRef, { 
+        photoURL: downloadURL,
+        email: user.email,
+        displayName: user.displayName,
+        lastUpdated: serverTimestamp()
+      }, { merge: true }); // merge: true ensures we don't overwrite existing fields
+      
+      toast.success("Avatar updated!");
+      window.location.reload();
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      toast.error("Upload failed: " + (error.message || "Unknown error"));
+    } finally {
+      setUploading(false);
+    }
   };
 
   const navLinks = [
