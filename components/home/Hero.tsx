@@ -55,9 +55,9 @@ const Hero = () => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <Link href="tel:+1234567890" className="md:hidden mb-2 w-full bg-black/50 rounded-lg text-xs flex justify-center items-center gap-2 p-2 underline font-bold text-gray-50 hover:bg-gray-900">
+            <Link href="tel:+447565123627" className="md:hidden mb-2 w-full bg-black/50 rounded-lg text-xs flex justify-center items-center gap-2 p-2 underline font-bold text-gray-50 hover:bg-gray-900">
               <FaHeadset size={15} className="text-white font-black" /> 
-              <span>+44 201 234 567</span>
+              <span>+44 7565 123627</span>
             </Link>
 
             <h1 className="text-3xl md:text-4xl lg:text-6xl font-bold text-white mb-4 md:mb-6">
