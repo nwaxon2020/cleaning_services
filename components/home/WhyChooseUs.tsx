@@ -33,7 +33,7 @@ const reasons: Reason[] = [
     title: 'Eco-Friendly',
     description: 'Using environmentally safe products and sustainable practices',
     details: 'We use non-toxic, biodegradable cleaning agents safe for children and pets. Our technology reduces water waste ensuring a deep, responsible clean.',
-    color: 'from-lime-400 to-green-600'
+    color: 'from-lime-400 to-green-600' 
   },
   {
     icon: FaStar,

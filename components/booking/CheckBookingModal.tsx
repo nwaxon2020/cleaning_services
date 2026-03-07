@@ -1,9 +1,8 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion'; 
 import { 
-  FaTimes, FaEnvelope, FaPhone, FaReceipt, FaLock, 
-  FaUser, FaCheck, FaBroom, FaCalendarAlt, FaChevronRight, FaSpinner, FaTrashAlt, FaExclamationTriangle 
+  FaTimes, FaEnvelope, FaPhone, FaLock, FaCalendarAlt, FaChevronRight, FaSpinner, FaTrashAlt, FaExclamationTriangle 
 } from 'react-icons/fa';
 import { db, auth } from '@/lib/firebase'; 
 import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';

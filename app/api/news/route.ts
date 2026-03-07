@@ -7,18 +7,19 @@ export async function GET(request: Request) {
 
   if (!apiKey) return NextResponse.json({ error: "API Key missing" }, { status: 500 });
 
+  // --- BRISTOL SPECIFIC QUERIES ---
   const categoryQueries: Record<string, string> = {
-    all: "Boston Lincolnshire UK",
-    transportation: "Boston Lincolnshire UK transport traffic",
-    sports: "Boston United FC sports",
-    government: "Boston Borough Council Lincolnshire",
-    cleaning: "UK environment hygiene waste",
+    all: "Bristol City UK news",
+    transportation: "Bristol Temple Meads traffic transport buses",
+    sports: "Bristol City FC Bristol Rovers rugby",
+    government: "Bristol City Council news local politics",
+    cleaning: "Bristol environment waste recycling hygiene",
   };
 
   const query = encodeURIComponent(categoryQueries[category]);
 
   try {
-    // 1. Try fetching specific Boston News
+    // 1. Fetch specific Bristol News
     const response = await fetch(
       `https://newsapi.org/v2/everything?q=${query}&language=en&sortBy=publishedAt&pageSize=8&apiKey=${apiKey}`
     );
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
     const formatted = articles.slice(0, 8).map((a: any, i: number) => ({
       id: `news-${i}`,
       title: a.title,
-      description: a.description?.slice(0, 80) + "...",
+      description: a.description ? a.description.slice(0, 80) + "..." : "No description available...",
       url: a.url,
       source: a.source.name,
       image: a.urlToImage || "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&q=80",
@@ -45,6 +46,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(formatted);
   } catch (error) {
+    console.error("News fetch error:", error);
     return NextResponse.json([]);
   }
 }

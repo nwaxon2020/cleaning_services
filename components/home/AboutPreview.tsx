@@ -28,7 +28,7 @@ const AboutPreview = () => {
             </h2>
             
             <p className="text-base md:text-lg text-zinc-600 mb-8 leading-relaxed">
-              We are a locally owned and operated cleaning company serving Boston, 
+              We are a locally owned and operated cleaning company serving Bristol, 
               Lincolnshire and surrounding areas. With over 5 years of experience, 
               we take pride in delivering exceptional cleaning services to homes and businesses.
             </p>

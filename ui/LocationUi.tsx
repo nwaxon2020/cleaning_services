@@ -13,9 +13,9 @@ const LocationUi = () => {
 
   // --- MOCK DATA ---
   const mockSettings = {
-    address: "Market Place, Boston, Lincolnshire PE21 6EH, United Kingdom",
+    address: "Market Place, Bristol, Lincolnshire PE21 6EH, United Kingdom",
     contactPhone: "+44 1205 367890",
-    contactEmail: "hello@bostonclean.co.uk",
+    contactEmail: "hello@Bristolclean.co.uk",
   };
 
   const previewMapUrl = `https://www.google.com/maps/embed/v1/place?key=YOUR_API_KEY&q=${encodeURIComponent(mockSettings.address)}`;
@@ -50,7 +50,7 @@ const LocationUi = () => {
             animate={{ opacity: 1, x: 0 }}
             className="text-4xl md:text-6xl font-black text-white uppercase italic tracking-tighter leading-none"
           >
-            The <span className="text-orange-600">Boston</span> Hub
+            The <span className="text-orange-600">Bristol</span> Hub
           </motion.h1>
           <p className="text-zinc-500 mt-6 max-w-xl text-sm font-medium leading-relaxed">
             From our strategic center in Market Place, we synchronize high-standard cleaning logistics across the entire Lincolnshire region.
@@ -136,7 +136,7 @@ const LocationUi = () => {
               className="w-full h-full rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/10 bg-zinc-900 relative"
             >
               <iframe
-                title="BostonClean Dark Map"
+                title="BristolClean Dark Map"
                 src={simpleMapUrl}
                 className="w-full h-full border-0 grayscale invert brightness-90 contrast-125 opacity-70 hover:opacity-100 hover:grayscale-0 hover:invert-0 transition-all duration-1000 overflow-hidden"
                 style={{ pointerEvents: 'auto' }}

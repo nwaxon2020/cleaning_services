@@ -46,7 +46,7 @@ const NewsUpdates = () => {
             <h2 className="text-3xl md:text-4xl font-black text-zinc-900 uppercase tracking-tight mb-2">
               Local <span className="text-orange-500 underline decoration-zinc-100 underline-offset-4">Updates</span>
             </h2>
-            <p className="text-zinc-500 text-sm font-medium italic">Latest headlines from Boston & UK</p>
+            <p className="text-zinc-500 text-sm font-medium italic">Latest headlines from Bristol & UK</p>
           </div>
 
           {/* Filter Buttons */}
@@ -123,7 +123,7 @@ const NewsUpdates = () => {
         {!loading && (
           <div className="mt-12 text-center">
             <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-[0.4em]">
-              Stay informed • BostonClean Community News
+              Stay informed • BristolClean Community News
             </p>
           </div>
         )}

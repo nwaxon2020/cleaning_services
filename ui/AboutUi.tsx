@@ -48,7 +48,7 @@ export default function AboutUi() {
     {
       year: '2018',
       title: 'The Spark',
-      desc: 'Founded by Sarah Johnson as a one-woman operation in the heart of Boston, UK.',
+      desc: 'Founded by Sarah Johnson as a one-woman operation in the heart of Bristol, UK.',
       icon: <FaRocket />
     },
     {
@@ -156,7 +156,7 @@ export default function AboutUi() {
           </div>
 
           <p className="text-white/60 max-w-xl mx-auto mt-8 font-medium uppercase tracking-[0.2em] text-[9px]">
-            The standard of cleanliness in Boston, UK
+            The standard of cleanliness in Bristol, UK
           </p>
         </div>
       </section>
@@ -177,7 +177,7 @@ export default function AboutUi() {
             transition={{ delay: 0.2 }}
             className="max-w-2xl mx-auto text-slate-600 text-lg md:text-xl leading-relaxed"
           >
-            We don't just scrub floors; we restore comfort. BostonClean is built on the belief that a spotless space is the foundation of a healthy life.
+            We don't just scrub floors; we restore comfort. BristolClean is built on the belief that a spotless space is the foundation of a healthy life.
           </motion.p>
         </div>
       </section>
@@ -232,10 +232,10 @@ export default function AboutUi() {
               <h2 className="text-4xl font-black uppercase tracking-tighter text-slate-900">Letter from the <span className="text-orange-600">CEO</span></h2>
               <div className="w-20 h-1.5 bg-orange-600 rounded-full" />
               <p className="text-slate-600 leading-relaxed text-lg">
-                When I started BostonClean in 2018, I had one mop, a bucket, and a deep-seated passion for helping my neighbors. I saw how much stress a messy home could add to an already busy life. 
+                When I started BristolClean in 2018, I had one mop, a bucket, and a deep-seated passion for helping my neighbors. I saw how much stress a messy home could add to an already busy life. 
               </p>
               <p className="text-slate-600 leading-relaxed">
-                Today, our team has grown, but that core philosophy remains. We've served over 500+ families in Boston, UK, ensuring that quality and reliability are never compromised. 
+                Today, our team has grown, but that core philosophy remains. We've served over 500+ families in Bristol, UK, ensuring that quality and reliability are never compromised. 
               </p>
               
               <div className="grid grid-cols-2 gap-6 pt-6">
@@ -303,10 +303,10 @@ export default function AboutUi() {
           >
             <h2 className="text-4xl font-black uppercase tracking-tighter mb-8 text-slate-900">Our Unwavering <span className="text-orange-600 italic">Mission</span></h2>
             <p className="text-lg text-slate-700 leading-relaxed mb-6 font-medium">
-              At BostonClean, our mission extends far beyond simply removing dust and grime. We are committed to redefining the standard of domestic and commercial care across Lincolnshire. 
+              At BristolClean, our mission extends far beyond simply removing dust and grime. We are committed to redefining the standard of domestic and commercial care across Lincolnshire. 
             </p>
             <p className="text-slate-500 leading-relaxed italic border-l-4 border-orange-500 pl-6 text-left max-w-2xl mx-auto">
-              "We believe that every environment we touch should be a sanctuary. By combining rigorous hospital-grade sanitization with the warmth of a local, family-owned touch, we ensure that your space isn't just clean—it's BostonClean."
+              "We believe that every environment we touch should be a sanctuary. By combining rigorous hospital-grade sanitization with the warmth of a local, family-owned touch, we ensure that your space isn't just clean—it's BristolClean."
             </p>
           </motion.div>
         </div>
@@ -315,12 +315,12 @@ export default function AboutUi() {
       {/* --- CONTACT & INFO --- */}
       <section className="py-20 px-6 bg-slate-900">
         <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-8">
-            <a href="mailto:hello@bostonclean.co.uk" className="flex flex-col items-center text-center p-8 bg-white/5 rounded-3xl border border-white/5 hover:border-orange-500/30 transition-all group">
+            <a href="mailto:hello@Bristolclean.co.uk" className="flex flex-col items-center text-center p-8 bg-white/5 rounded-3xl border border-white/5 hover:border-orange-500/30 transition-all group">
                 <div className="w-14 h-14 bg-orange-600 text-white rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <FaEnvelope size={24} />
                 </div>
                 <h4 className="font-bold text-white text-lg mb-2">Email Us</h4>
-                <p className="text-slate-400 text-sm italic">hello@bostonclean.co.uk</p>
+                <p className="text-slate-400 text-sm italic">hello@Bristolclean.co.uk</p>
             </a>
 
             <a href="tel:+441234567890" className="flex flex-col items-center text-center p-8 bg-white/5 rounded-3xl border border-white/5 hover:border-orange-500/30 transition-all group">
@@ -336,7 +336,7 @@ export default function AboutUi() {
                   <FaMapMarkerAlt size={24} />
                 </div>
                 <h4 className="font-bold text-white text-lg mb-2">Our Office</h4>
-                <p className="text-slate-400 text-sm italic">Market Place, Boston PE21</p>
+                <p className="text-slate-400 text-sm italic">Market Place, Bristol PE21</p>
             </button>
         </div>
       </section>
@@ -351,7 +351,7 @@ export default function AboutUi() {
              Ready for a <span className="text-black italic">Fresh</span> Start?
            </h2>
            <p className="text-slate-200 mb-10 font-medium max-w-xl mx-auto relative z-10">
-             Join over 500+ satisfied clients in Boston and experience the difference of professional care.
+             Join over 500+ satisfied clients in Bristol and experience the difference of professional care.
            </p>
            <button className="px-10 py-4 bg-black text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-gray-900 transition-all shadow-xl shadow-orange-600/40 relative z-10">
              Book Your Clean Now

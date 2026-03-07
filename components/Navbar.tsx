@@ -187,7 +187,7 @@ const Navbar = () => {
           <div className="flex flex-col justify-center">
             {/* TITLE */}
             <span className={`text-[10px] md:text-xl font-black tracking-tighter ${isWhitePage ? "text-zinc-400" : "text-white"} leading-none uppercase`}>
-              BOSTON<span className="text-orange-500 group-hover:text-orange-400 transition-colors">CLEAN</span>
+              BRISTOL<span className="text-orange-500 group-hover:text-orange-400 transition-colors">CLEAN</span>
             </span>
 
             {/* SEPARATOR LINE */}

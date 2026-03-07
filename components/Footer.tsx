@@ -69,14 +69,14 @@ const Footer = () => {
                 {/* LOGO IMAGE */}
                 <img 
                   src="/favicon.png" 
-                  alt="BostonClean Logo" 
+                  alt="BristolClean Logo" 
                   className="w-8 h-8 md:w-10 md:h-10 object-contain rounded-full"
                 />
 
                 <div className="flex flex-col">
                   {/* TITLE */}
                   <h3 className="text-[10px] md:text-2xl font-black uppercase tracking-tighter leading-none">
-                    Boston<span className="text-orange-500">Clean</span>
+                    Bristol<span className="text-orange-500">Clean</span>
                   </h3>
 
                   {/* UNDERLINE SEPARATOR */}
@@ -90,7 +90,7 @@ const Footer = () => {
               </div>
 
               <p className="text-gray-400 text-sm leading-relaxed">
-                Making Boston sparkle. Professional eco-friendly cleaning services you can trust.
+                Making Bristol sparkle. Professional eco-friendly cleaning services you can trust.
               </p>
             </div>
             
@@ -167,7 +167,7 @@ const Footer = () => {
             </div>
             <div className="pt-2">
               <p className="text-gray-400 text-xs flex items-center gap-3">
-                <FaMapMarkerAlt className="text-orange-500" /> Boston, Lincolnshire, UK
+                <FaMapMarkerAlt className="text-orange-500" /> Bristol, Lincolnshire, UK
               </p>
             </div>
           </div>
@@ -176,7 +176,7 @@ const Footer = () => {
         {/* Bottom Bar */}
         <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-gray-600 text-[9px] uppercase font-bold tracking-[0.2em]">
-            © {new Date().getFullYear()} BostonClean. All rights reserved.
+            © {new Date().getFullYear()} BristolClean. All rights reserved.
           </p>
           <div className="flex space-x-6 text-[9px] uppercase font-bold tracking-widest text-gray-600">
             <Link href="/policy" className="hover:text-white transition-colors">Privacy & Terms</Link>

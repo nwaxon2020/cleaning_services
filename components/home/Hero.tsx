@@ -58,13 +58,13 @@ const Hero = () => {
             <h1 className="text-3xl md:text-4xl lg:text-6xl font-bold text-white mb-4 md:mb-6">
               Professional Cleaning Services in{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-orange-500">
-                Boston, UK
+                Bristol, UK
               </span>
             </h1>
             
             <p className="text-lg text-gray-300 mb-8 max-w-lg">
               Experience the sparkle of a professionally cleaned home or office. 
-              We bring eco-friendly excellence to every corner of Boston and surrounding areas.
+              We bring eco-friendly excellence to every corner of Bristol and surrounding areas.
             </p>
 
             <div className="flex flex-col md:flex-row gap-4">

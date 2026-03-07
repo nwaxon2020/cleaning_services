@@ -2,8 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { 
-  FaPlusCircle, FaMinusCircle, FaChevronLeft, FaChevronRight, 
-  FaCreditCard, FaMapMarkerAlt, FaCalendarAlt, FaClock 
+  FaPlusCircle, FaMinusCircle, FaChevronLeft, FaChevronRight, FaCreditCard, FaMapMarkerAlt,
 } from 'react-icons/fa';
 
 /**
