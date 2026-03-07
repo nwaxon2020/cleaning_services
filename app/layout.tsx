@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     siteName: "BostonClean",
     images: [
       {
-        url: "https://res.cloudinary.com/dqm6hjihm/image/upload/v1772788836/og_image_zldclg.png", // Ensure you save your logo/banner as og-image.png in /public
+        url: "https://res.cloudinary.com/dqm6hjihm/image/upload/v1772900012/site_image_o1mqvz.png", // Ensure you save your logo/banner as og-image.png in /public
         width: 1200,
         height: 630,
         alt: "BostonClean Professional Services",
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "BostonClean | Professional Cleaning Services",
     description: "Expert residential and commercial cleaning in Boston, UK.",
-    images: ["https://res.cloudinary.com/dqm6hjihm/image/upload/v1772788836/og_image_zldclg.png"], 
+    images: ["https://res.cloudinary.com/dqm6hjihm/image/upload/v1772900012/site_image_o1mqvz.png"], 
   },
 
   // Icons
