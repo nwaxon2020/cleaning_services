@@ -19,23 +19,23 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BostonClean | Professional Cleaning Services",
-  description: "Premier cleaning services in Boston, UK. Expert residential and commercial cleaning with hospital-grade standards.",
-  keywords: ["Cleaning Services Boston", "Office Cleaning Lincolnshire", "Domestic Cleaners", "Professional House Cleaning"],
-  authors: [{ name: "BostonClean Team" }],
+  title: "BristolClean | Professional Cleaning Services",
+  description: "Premier cleaning services in Bristol, UK. Expert residential and commercial cleaning with hospital-grade standards.",
+  keywords: ["Cleaning Services Bristol", "Office Cleaning Lincolnshire", "Domestic Cleaners", "Professional House Cleaning"],
+  authors: [{ name: "BristolClean Team" }],
   
   // Open Graph (Facebook, WhatsApp, LinkedIn)
   openGraph: {
-    title: "BostonClean | Professional Cleaning Services",
+    title: "BristolClean | Professional Cleaning Services",
     description: "Expert cleaning services for your home and office. Restore comfort to your space today.",
     url: "https://bostonclean.co.uk", // Replace with your actual domain
-    siteName: "BostonClean",
+    siteName: "BristolClean",
     images: [
       {
         url: "https://res.cloudinary.com/dqm6hjihm/image/upload/v1772900012/site_image_o1mqvz.png", // Ensure you save your logo/banner as og-image.png in /public
         width: 1200,
         height: 630,
-        alt: "BostonClean Professional Services",
+        alt: "BristolClean Professional Services",
       },
     ],
     locale: "en_GB",
@@ -45,8 +45,8 @@ export const metadata: Metadata = {
   // Twitter Tags
   twitter: {
     card: "summary_large_image",
-    title: "BostonClean | Professional Cleaning Services",
-    description: "Expert residential and commercial cleaning in Boston, UK.",
+    title: "BristolClean | Professional Cleaning Services",
+    description: "Expert residential and commercial cleaning in Bristol, UK.",
     images: ["https://res.cloudinary.com/dqm6hjihm/image/upload/v1772900012/site_image_o1mqvz.png"], 
   },
 
