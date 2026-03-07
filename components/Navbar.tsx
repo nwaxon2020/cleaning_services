@@ -173,7 +173,7 @@ const Navbar = () => {
 
   return (
     <nav className={`fixed left-0 right-0 z-[30] transition-all duration-500 ease-in-out ${scrolled ? "top-2 px-3" : "top-0 px-0"}`}>
-      <div className={`max-w-7xl mx-auto transition-all duration-500 px-4 md:px-10 flex justify-between items-center ${scrolled ? "bg-black/90 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl h-14 md:h-16" : "bg-black/20 md:bg-transparent h-16 md:h-20 border-transparent"}`}>
+      <div className={`w-full mx-auto transition-all duration-500 px-4 md:px-10 flex justify-between items-center ${scrolled ? "bg-black/90 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl h-14 md:h-16" : "bg-black/20 md:bg-transparent h-16 md:h-20 border-transparent"}`}>
         
         <Link href="/" className="group flex items-center gap-2 shrink-0">
           {/* LOGO IMAGE */}
