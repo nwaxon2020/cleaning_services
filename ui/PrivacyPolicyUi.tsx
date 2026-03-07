@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { 
   FiShield, FiEye, FiLock, FiRefreshCw, 
   FiCheckCircle, FiChevronRight, 
-  FiInfo, FiClock, FiCalendar, FiChevronLeft, FiZap 
+  FiInfo, FiClock, FiCalendar, FiChevronLeft, FiZap, FiTrash2 
 } from 'react-icons/fi';
 
 const HERO_IMAGES = [
@@ -47,6 +47,9 @@ const PrivacyPageUi = () => {
       },
       security: {
         content: "We employ industry-standard SSL encryption for all transactions. Our staff are fully vetted and sign strict non-disclosure agreements regarding the privacy of your home or office."
+      },
+      deletion: {
+        content: "We respect your 'Right to be Forgotten'. Users may request the complete removal of their personal data, including booking history, review logs, and profile identifiers, at any time through our automated portal."
       }
     }
   };
@@ -56,14 +59,14 @@ const PrivacyPageUi = () => {
     { id: 'usage', title: 'Usage Policy', icon: <FiShield /> },
     { id: 'payback', title: 'Refunds & Guarantees', icon: <FiRefreshCw /> },
     { id: 'security', title: 'Security Standards', icon: <FiLock /> },
+    { id: 'deletion', title: 'Data Rights & Erasure', icon: <FiTrash2 /> },
   ];
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] relative">
       
-      {/* --- HERO HEADER: FIXED TO HIDE NAV COMPLETELY --- */}
+      {/* --- HERO HEADER --- */}
       <section className="relative h-[25vh] md:h-[30vh] flex items-center justify-center overflow-hidden z-[100] bg-black">
-        {/* SOLID BLACK SHIELD LAYER */}
         <div className="absolute inset-0 bg-black z-[5]" />
 
         <AnimatePresence mode="wait">
@@ -75,7 +78,6 @@ const PrivacyPageUi = () => {
             transition={{ duration: 1.2 }}
             className="absolute inset-0 z-[10]"
           >
-            {/* DARK OVERLAY ON TOP OF IMAGE */}
             <div className="absolute inset-0 bg-black/70 z-20" />
             <img 
               src={HERO_IMAGES[currentImg]} 
@@ -137,7 +139,8 @@ const PrivacyPageUi = () => {
           </div>
 
           <div className="lg:col-span-3 space-y-12 bg-white p-6 md:p-16 md:rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-slate-50">
-            {/* Sections 01 to 04 (same as before) */}
+            
+            {/* 01. Collection */}
             <section id="collection" className="scroll-mt-32">
               <div className="flex items-center gap-4 mb-8">
                 <div className="p-4 bg-orange-50 text-orange-600 rounded-2xl"><FiEye size={24}/></div>
@@ -154,6 +157,7 @@ const PrivacyPageUi = () => {
               </div>
             </section>
 
+            {/* 02. Usage */}
             <section id="usage" className="scroll-mt-32">
               <div className="flex items-center gap-4 mb-8 text-orange-600">
                 <div className="p-4 bg-orange-50 rounded-2xl"><FiShield size={24}/></div>
@@ -164,6 +168,7 @@ const PrivacyPageUi = () => {
               </p>
             </section>
 
+            {/* 03. Payback */}
             <section id="payback" className="scroll-mt-32 p-8 md:p-12 bg-slate-900 md:rounded-[2.5rem] text-white relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-orange-600/20 blur-3xl -mr-16 -mt-16" />
               <div className="flex items-center gap-4 mb-10">
@@ -188,6 +193,7 @@ const PrivacyPageUi = () => {
               </div>
             </section>
 
+            {/* 04. Security */}
             <section id="security" className="scroll-mt-32">
               <div className="flex items-center gap-4 mb-8 text-orange-600">
                 <div className="p-4 bg-orange-50 rounded-2xl"><FiLock size={24}/></div>
@@ -200,22 +206,44 @@ const PrivacyPageUi = () => {
                 </p>
               </div>
             </section>
+
+            {/* 05. Deletion & Data Rights */}
+            <section id="deletion" className="scroll-mt-32">
+              <div className="flex items-center gap-4 mb-8 text-red-600">
+                <div className="p-4 bg-red-50 rounded-2xl"><FiTrash2 size={24}/></div>
+                <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter italic">05. Data Rights & Deletion</h2>
+              </div>
+              <div className="space-y-6">
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  {legal.policySections.deletion.content}
+                </p>
+                <div className="p-6 bg-zinc-900 rounded-3xl border border-white/10 text-center">
+                  <p className="text-zinc-400 text-[10px] font-black uppercase tracking-widest mb-4">
+                    Looking to remove your account?
+                  </p>
+                  <p className="text-white text-xs font-bold leading-relaxed mb-4">
+                    The direct link to manage and delete your personal data is located at the <span className="text-orange-500">footer of this website</span> under the "Active Section". Note you must be signed in with email & password to proceed
+                  </p>
+                </div>
+              </div>
+            </section>
+
           </div>
         </div>
       </div>
 
       <section className="py-24 px-6 bg-white relative z-[20]">
         <div className="max-w-5xl mx-auto bg-[#050505] rounded-[2.5rem] p-12 md:p-20 text-center relative overflow-hidden shadow-2xl">
-           <div className="absolute top-0 right-0 w-96 h-96 bg-orange-600/20 blur-[120px] -mr-48 -mt-48" />
-           <h2 className="text-3xl md:text-5xl font-black text-white mb-6 uppercase tracking-tighter relative z-10">
-             Ready for a <span className="text-orange-500 italic">Fresh</span> Start?
-           </h2>
-           <button 
-             onClick={() => router.push('/services')}
-             className="px-10 py-4 bg-orange-600 text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-orange-700 transition-all shadow-xl shadow-orange-600/40 relative z-10 flex items-center gap-2 mx-auto"
-           >
-             Book Now <FiZap />
-           </button>
+            <div className="absolute top-0 right-0 w-96 h-96 bg-orange-600/20 blur-[120px] -mr-48 -mt-48" />
+            <h2 className="text-3xl md:text-5xl font-black text-white mb-6 uppercase tracking-tighter relative z-10">
+              Ready for a <span className="text-orange-500 italic">Fresh</span> Start?
+            </h2>
+            <button 
+              onClick={() => router.push('/services')}
+              className="px-10 py-4 bg-orange-600 text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-orange-700 transition-all shadow-xl shadow-orange-600/40 relative z-10 flex items-center gap-2 mx-auto"
+            >
+              Book Now <FiZap />
+            </button>
         </div>
       </section>
     </div>

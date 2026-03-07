@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { FaMagic, FaShieldAlt, FaClock } from 'react-icons/fa';
+import { FaMagic, FaShieldAlt, FaClock, FaHeadset } from 'react-icons/fa';
 import QuickBooking from "../booking/QuickBooking";
 
 // Edit this list to add or change images
@@ -55,6 +55,11 @@ const Hero = () => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
           >
+            <Link href="tel:+1234567890" className="md:hidden mb-2 w-full bg-black/50 rounded-lg text-xs flex justify-center items-center gap-2 p-2 underline font-bold text-gray-50 hover:bg-gray-900">
+              <FaHeadset size={15} className="text-white font-black" /> 
+              <span>+44 201 234 567</span>
+            </Link>
+
             <h1 className="text-3xl md:text-4xl lg:text-6xl font-bold text-white mb-4 md:mb-6">
               Professional Cleaning Services in{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-orange-500">

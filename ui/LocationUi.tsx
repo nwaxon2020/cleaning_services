@@ -13,7 +13,7 @@ const LocationUi = () => {
 
   // --- MOCK DATA ---
   const mockSettings = {
-    address: "Market Place, Bristol, Lincolnshire PE21 6EH, United Kingdom",
+    address: "Market Place, Bristol, Splatford Business park Splatford Barton Kennford Exeter EX6 7BT",
     contactPhone: "+44 1205 367890",
     contactEmail: "hello@Bristolclean.co.uk",
   };

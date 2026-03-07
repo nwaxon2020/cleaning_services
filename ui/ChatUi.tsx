@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { auth, db } from '@/lib/firebase';
 import { 
@@ -154,6 +155,9 @@ export default function ChatUi() {
                 <button onClick={() => signInWithPopup(auth, new GoogleAuthProvider())} className="w-full flex items-center justify-center gap-3 py-4 bg-white text-black text-xs font-black uppercase rounded-xl hover:bg-gray-200 transition-all">
                   <FaGoogle /> Google Login
                 </button>
+                <Link href="/login" className="my-4 w-full flex items-center justify-center gap-3 py-4 bg-blue-800 text-white text-xs font-black uppercase rounded-xl hover:bg-blue-900 transition-all">
+                  <FaEnvelope /> Email & Password
+                </Link>
               </div>
             </motion.div>
           )}

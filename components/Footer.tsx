@@ -123,7 +123,7 @@ const Footer = () => {
                     {/* DYNAMIC DATA DELETION LINK */}
                     {isEmailUser && (
                       <Link 
-                        href="/settings/delete-account" 
+                        href="/delete-account" 
                         className="flex items-center gap-1 text-zinc-500 hover:text-red-500 text-[9px] font-black uppercase tracking-tighter transition-colors"
                       >
                         <HiTrash size={12} /> Delete Data

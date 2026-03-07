@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaStar, FaGoogle, FaTrash, FaExclamationTriangle } from "react-icons/fa";
+import { FaStar, FaGoogle, FaTrash, FaExclamationTriangle, FaEnvelope } from "react-icons/fa";
 import { HiShieldCheck } from "react-icons/hi";
 import { auth, db } from "@/lib/firebase";
 import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, User } from "firebase/auth";
@@ -10,6 +10,7 @@ import { collection, addDoc, query, getDocs, orderBy, limit, serverTimestamp, de
 import toast from "react-hot-toast";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
+import Link from "next/dist/client/link";
 
 // --- CONSTANTS ---
 const SECTION_BG_IMAGE = "/bg_review.jpg";
@@ -182,7 +183,7 @@ const SmartReviewSection = () => {
           
           {/* LEFT: INPUT AREA */}
           <div className="px-3 lg:col-span-5 lg:sticky lg:top-28">
-            <div className="p-4 md:p-8 rounded-3xl bg-black/50 border border-white/10 backdrop-blur-xl shadow-2xl">
+            <div className="p-4 md:p-6 rounded-3xl bg-black/50 border border-white/10 backdrop-blur-xl shadow-2xl">
               {!user ? (
                 <div className="text-center py-4">
                   <HiShieldCheck className="text-6xl text-orange-500 mx-auto mb-4" />
@@ -190,10 +191,14 @@ const SmartReviewSection = () => {
                   <p className="text-slate-400 text-sm mb-8">We only accept reviews from verified users.</p>
                   <button 
                     onClick={handleAuth}
-                    className="w-full bg-white text-black py-4 rounded-xl font-black text-sm flex items-center justify-center gap-3 hover:bg-orange-500 hover:text-white transition-all active:scale-95"
+                    className="w-full bg-white text-black py-4 rounded-xl font-black text-sm flex items-center justify-center gap-3 hover:bg-gray-200 transition-all active:scale-95"
                   >
                     <FaGoogle /> CONTINUE WITH GOOGLE
                   </button>
+                  
+                  <Link href="/login" className="my-4 w-full flex items-center justify-center gap-3 py-4 bg-blue-800 text-white text-xs font-black uppercase rounded-xl hover:bg-blue-900 transition-all">
+                    <FaEnvelope /> Email & Password
+                  </Link> 
                 </div>
               ) : currentUserReview ? (
                 <div className="text-center">

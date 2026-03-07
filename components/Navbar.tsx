@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { HiOutlineMenuAlt3, HiX, HiAdjustments, HiLogout, HiUserCircle, HiCamera, HiBell, HiChevronDown } from "react-icons/hi"; 
+import { FaHeadset } from "react-icons/fa";
 import UserAvatar from "@/components/auth/UserAvatar";
 import { auth, storage, db } from "@/lib/firebase"; 
 import { onAuthStateChanged, User, signOut, updateProfile } from "firebase/auth";
@@ -36,48 +37,58 @@ const Navbar = () => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      // FIX: Only set the user if they have an email (Google or Email/Pass)
-      // This ignores the temporary Phone Auth from the Booking Modal
-      if (currentUser && currentUser.email) {
+    let unsubscribeSnapshot: (() => void) | null = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      // 1. CLEAR PREVIOUS LISTENER IMMEDIATELY
+      if (unsubscribeSnapshot) {
+        unsubscribeSnapshot();
+        unsubscribeSnapshot = null;
+      }
+
+      if (currentUser?.email) {
         setUser(currentUser);
         
+        // 2. START NEW LISTENER
         if (currentUser.uid === ADMIN_ID) {
-          const chatsRef = collection(db, "chats");
-          return onSnapshot(chatsRef, (snapshot) => {
-            let total = 0;
-            snapshot.docs.forEach(doc => {
-              const data = doc.data();
-              total += (data.unreadCountAdmin || 0);
-            });
-            setUnreadCount(total);
-          });
-        } else {
-          const chatRef = doc(db, "chats", currentUser.uid);
-          return onSnapshot(chatRef, (doc) => {
-            if (doc.exists()) {
-              setUnreadCount(doc.data().unreadCountUser || 0);
+          unsubscribeSnapshot = onSnapshot(collection(db, "chats"), 
+            (snapshot) => {
+              let total = 0;
+              snapshot.docs.forEach(doc => total += (doc.data().unreadCountAdmin || 0));
+              setUnreadCount(total);
+            },
+            (err) => {
+              // CATCH THE PERMISSION ERROR HERE
+              if (err.code !== 'permission-denied') console.error(err);
             }
-          });
+          );
+        } else {
+          unsubscribeSnapshot = onSnapshot(doc(db, "chats", currentUser.uid), 
+            (docSnap) => {
+              if (docSnap.exists()) setUnreadCount(docSnap.data().unreadCountUser || 0);
+            },
+            (err) => {
+              // CATCH THE PERMISSION ERROR HERE
+              if (err.code !== 'permission-denied') console.warn("Chat listener detached safely.");
+            }
+          );
         }
       } else {
-        // If there is no user or it's a phone-only guest, treat as logged out in Nav
         setUser(null);
         setUnreadCount(0);
       }
     });
 
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsProfileOpen(false);
-      }
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setIsProfileOpen(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
       document.removeEventListener("mousedown", handleClickOutside);
-      unsubscribe();
+      unsubscribeAuth();
+      if (unsubscribeSnapshot) unsubscribeSnapshot();
     };
   }, [ADMIN_ID]);
 
@@ -260,16 +271,21 @@ const Navbar = () => {
 
         {/* Action Area */}
         <div className="flex items-center gap-2 md:gap-4 shrink-0 relative" ref={dropdownRef}>
-          {user && user.uid === ADMIN_ID && (
-            <Link href="/admin" className="p-2 bg-orange-500/10 text-orange-500 rounded-lg hover:bg-orange-500 hover:text-white transition-all">
+          {user && user.uid === ADMIN_ID ? (
+            <Link href="/admin" className="p-2 bg-orange-500/10 text-orange-400 font-black rounded-lg hover:bg-orange-500 hover:text-white transition-all">
               <HiAdjustments size={20} />
+            </Link>
+          ): (
+            <Link href="tel:+1234567890" className={`hidden md:flex items-center gap-2 p-2 underline bg-black/90 rounded-lg text-gray-50 text-sm hover:bg-gray-900 transition-colors`}>
+              <FaHeadset size={16} className="text-white" /> 
+              <span>+44 201 234 567</span>
             </Link>
           )}
 
           <div className="flex items-center gap-3">
             {user ? (
               <div className="flex items-center gap-3 cursor-pointer" onClick={() => setIsProfileOpen(!isProfileOpen)}>
-                <span className="hidden md:block text-[10px] font-black text-orange-500 uppercase tracking-widest">{user.displayName?.split(" ")[0]}</span>
+                <span className="hidden md:block text-[10px] font-black text-orange-400 uppercase tracking-widest">{user.displayName?.split(" ")[0]}</span>
                 <div className="w-8 h-8 md:w-12 md:h-12 rounded-full overflow-hidden border-2 border-orange-500 hover:scale-105 transition-transform">
                    <img src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName}&background=f97316&color=fff`} alt="profile" className="w-full h-full object-cover" />
                 </div>
