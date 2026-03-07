@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FaHome, FaBuilding, FaCouch, FaWindowMaximize, FaWrench, 
@@ -10,7 +10,7 @@ import {
   FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaCreditCard, FaSearch,
   FaChevronUp, FaChevronDown, FaSpinner
 } from 'react-icons/fa';
-import { useRouter, useSearchParams } from 'next/navigation'; // Added useSearchParams
+import { useRouter, useSearchParams } from 'next/navigation';
 import { auth } from '@/lib/firebase';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -98,11 +98,12 @@ const Counter = ({ label, count, onChange, price }: any) => (
   </div>
 );
 
-export default function ServicesUi() {
-  const searchParams = useSearchParams(); // Added
-  const selectedType = searchParams.get('type'); // Added
+// MAIN CONTENT COMPONENT
+function ServicesContent() {
+  const searchParams = useSearchParams();
+  const selectedType = searchParams.get('type');
   const [activeOverlay, setActiveOverlay] = useState<any>(null);
-  const [highlightedId, setHighlightedId] = useState<number | null>(null); // Added
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
   const [step, setStep] = useState(1);
   const [counts, setCounts] = useState<any>({});
   const [checkedRequirements, setCheckedRequirements] = useState<any>({});
@@ -126,14 +127,9 @@ export default function ServicesUi() {
     if (selectedType) {
       const service = services.find(s => s.category === selectedType);
       if (service) {
-        // Scroll to card
         const element = document.getElementById(`service-${service.id}`);
         element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        
-        // Pulse Effect
         setHighlightedId(service.id);
-        
-        // Auto Open
         const timer = setTimeout(() => {
           setActiveOverlay(service);
           setStep(1);
@@ -238,7 +234,7 @@ export default function ServicesUi() {
       setIsProcessingPayment(false);
       toast.success('Payment Successful!');
       handleConfirmBooking();
-    }, 2000);
+    }, 3000);
   };
 
   useEffect(() => {
@@ -251,7 +247,6 @@ export default function ServicesUi() {
   return (
     <div className="min-h-screen bg-white pt-28 pb-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
         <div className="flex justify-end mb-8">
           <button onClick={() => setShowCheckBooking(true)} className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white hover:bg-orange-600 rounded-xl font-black uppercase text-[9px] tracking-widest transition-all shadow-xl active:scale-95">
             <FaSearch size={10} /> Check My Booking
@@ -271,12 +266,11 @@ export default function ServicesUi() {
           {services.map((service, index) => (
             <motion.div 
               key={service.id} 
-              id={`service-${service.id}`} // Added for scrolling
+              id={`service-${service.id}`}
               initial={{ opacity: 0, y: 20 }} 
               animate={{ 
                 opacity: 1, 
                 y: 0,
-                // Blinking Hover Logic
                 boxShadow: highlightedId === service.id 
                   ? ["0px 0px 0px #f97316", "0px 0px 40px #f97316", "0px 0px 0px #f97316"] 
                   : "0px 0px 0px rgba(0,0,0,0)"
@@ -445,7 +439,6 @@ export default function ServicesUi() {
           )}
         </AnimatePresence>
 
-        {/* --- PAYMENT MODAL --- */}
         <AnimatePresence>
           {showPayment && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-slate-900/95 backdrop-blur-xl flex items-center justify-center p-4">
@@ -453,7 +446,7 @@ export default function ServicesUi() {
                 <button onClick={() => setShowPayment(false)} className="absolute top-6 right-6 text-slate-300 hover:text-orange-500"><FaTimes /></button>
                 <div className="text-center mb-8">
                   <div className="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-4 italic font-black text-2xl">£</div>
-                  <h2 className="text-2xl font-black uppercase italic italic tracking-tighter">Secure Checkout</h2>
+                  <h2 className="text-2xl font-black uppercase italic tracking-tighter">Secure Checkout</h2>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Complete your payment for £{total.toFixed(2)}</p>
                 </div>
 
@@ -506,5 +499,19 @@ export default function ServicesUi() {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
       `}</style>
     </div>
+  );
+}
+
+// WRAPPER WITH SUSPENSE BOUNDARY
+export default function ServicesUi() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4">
+        <FaSpinner className="animate-spin text-orange-500 text-4xl" />
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Loading Expertise...</p>
+      </div>
+    }>
+      <ServicesContent />
+    </Suspense>
   );
 }
