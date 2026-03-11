@@ -3,18 +3,21 @@
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import toast from 'react-hot-toast';
 import { 
   FaTachometerAlt, FaCalendarAlt, FaStar, 
-  FaUsers, FaCog, FaSignOutAlt, FaHome 
+  FaBuilding, FaCog, FaSignOutAlt, FaHome,
+  FaBars, FaTimes,
+  FaBook
 } from 'react-icons/fa';
+import { FaBowlFood, FaClover, FaHospital } from 'react-icons/fa6';
 
 export default function AdminClientWrapper({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -47,9 +50,14 @@ export default function AdminClientWrapper({ children }: { children: React.React
     { name: 'Dashboard', href: '/admin', icon: FaTachometerAlt },
     { name: 'Bookings', href: '/admin/bookings', icon: FaCalendarAlt },
     { name: 'Reviews', href: '/admin/reviews', icon: FaStar },
-    { name: 'Users', href: '/admin/users', icon: FaUsers },
+    { name: 'Cleaning Services', href: '/admin/cleaning-services', icon: FaClover },
+    { name: 'Rental Services', href: '/admin/rental-services', icon: FaBowlFood },
+    { name: 'Decorations', href: '/admin/decoration-services', icon: FaBuilding },
+    { name: 'Health Services', href: '/admin/health-services', icon: FaHospital },
     { name: 'Settings', href: '/admin/settings', icon: FaCog },
   ];
+
+  const closeMobileMenu = () => setMobileMenuOpen(false);
 
   if (loading) return (
     <div className="fixed inset-0 bg-black flex items-center justify-center z-[999]">
@@ -61,8 +69,61 @@ export default function AdminClientWrapper({ children }: { children: React.React
 
   return (
     <div className="fixed inset-0 bg-black z-[100] flex flex-col md:flex-row overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-full md:w-64 bg-[#111] border-r border-white/5 flex flex-col shrink-0">
+      {/* Mobile Header */}
+      <div className="md:hidden flex items-center justify-between p-4 bg-[#111] border-b border-white/5">
+        <h2 className="text-xl font-black text-white uppercase tracking-tighter">
+          Admin <span className="text-orange-500">Panel</span>
+        </h2>
+        <button 
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-2 text-white bg-white/5 rounded-lg"
+        >
+          {mobileMenuOpen ? <FaTimes size={20} /> : <FaBars size={20} />}
+        </button>
+      </div>
+
+      {/* Mobile Dropdown Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden absolute top-[72px] left-0 right-0 bg-[#111] border-b border-white/5 z-50 max-h-[calc(100vh-72px)] overflow-y-auto">
+          <div className="p-4 space-y-2">
+            <Link 
+              href="/" 
+              onClick={closeMobileMenu}
+              className="flex items-center gap-3 px-4 py-4 rounded-xl transition-all text-xs font-black uppercase tracking-widest text-zinc-400 hover:text-white hover:bg-white/5 mb-2 border border-white/5 bg-white/5"
+            >
+              <FaHome size={16}/> <span>Back to Site</span>
+            </Link>
+
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.href;
+              return (
+                <Link 
+                  key={item.href} 
+                  href={item.href} 
+                  onClick={closeMobileMenu}
+                  className={`flex items-center gap-3 px-4 py-4 rounded-xl transition-all text-xs font-bold uppercase tracking-widest ${isActive ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'text-zinc-500 hover:text-white hover:bg-white/5'}`}
+                >
+                  <Icon size={16} /> <span>{item.name}</span>
+                </Link>
+              );
+            })}
+
+            <button 
+              onClick={() => {
+                handleSignOut();
+                closeMobileMenu();
+              }} 
+              className="flex items-center gap-3 px-4 py-4 text-zinc-500 hover:text-red-500 font-bold text-xs uppercase tracking-widest transition-all w-full border-t border-white/5 mt-4 pt-4"
+            >
+              <FaSignOutAlt size={16} /> Sign Out
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop Sidebar - Hidden on mobile */}
+      <aside className="hidden md:flex w-60 bg-[#111] border-r border-white/5 flex-col shrink-0">
         <div className="p-6">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-xl font-black text-white uppercase tracking-tighter">
@@ -95,8 +156,8 @@ export default function AdminClientWrapper({ children }: { children: React.React
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 h-full overflow-y-auto bg-black p-4 md:p-10">
-        <div className="max-w-6xl mx-auto">
+      <main className="flex-1 h-full overflow-y-auto bg-black">
+        <div className="mx-auto">
           {children}
         </div>
       </main>

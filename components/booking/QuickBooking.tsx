@@ -241,7 +241,7 @@ const QuickBooking = () => {
   };
 
   return (
-    <div className="-mt-2 md:-mt-10 bg-black/20 backdrop-blur-lg rounded-2xl p-4 md:p-6 border border-white/20 w-full min-h-[400px] flex flex-col justify-between overflow-hidden">
+    <div className="bg-black/20 backdrop-blur-lg rounded-2xl p-4 md:p-6 border border-white/20 w-full min-h-[400px] flex flex-col justify-between overflow-hidden">
       <AnimatePresence mode="wait">
 
         {/* STEP 1: Booking Details */}

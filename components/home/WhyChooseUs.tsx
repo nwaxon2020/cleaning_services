@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaShieldAlt, FaClock, FaLeaf, FaStar, FaUsers, FaAward, FaTimes } from 'react-icons/fa';
+import { 
+  FaHome, FaPaintBrush, FaHeartbeat, FaGlassCheers, FaBed,
+  FaTimes, FaCheckCircle, FaClock as FaClockRegular,
+  FaLeaf as FaLeafRegular
+} from 'react-icons/fa';
 import { IconType } from 'react-icons';
 
 interface Reason {
@@ -14,47 +18,58 @@ interface Reason {
 }
 
 const reasons: Reason[] = [
+  // 1. Professional Cleaning Services
   {
-    icon: FaShieldAlt,
-    title: 'Fully Insured',
-    description: 'All our services are fully insured for your peace of mind',
-    details: 'We carry comprehensive public liability and employees’ liability insurance. This protects both you and our staff from any legal or financial worry.',
-    color: 'from-emerald-500 to-teal-600'
+    icon: FaHome,
+    title: 'Professional Cleaning',
+    description: 'Expert residential and commercial cleaning with hospital-grade standards',
+    details: 'From deep cleaning to regular maintenance, our professional team ensures every corner sparkles. We use eco-friendly products and advanced equipment for a thorough clean that\'s safe for your family, pets, and the environment.',
+    color: 'from-blue-500 to-cyan-600'
   },
+  
+  // 2. Decoration & Renovation
   {
-    icon: FaClock,
-    title: '24/7 Availability',
-    description: 'Round-the-clock cleaning services whenever you need us',
-    details: 'Whether it is an emergency spill or night-shift office cleaning, our team is available 24 hours a day, 7 days a week around your schedule.',
-    color: 'from-orange-500 to-red-600'
+    icon: FaPaintBrush,
+    title: 'Decoration Services',
+    description: 'Expert painting, tiling, flooring, and wall decoration',
+    details: 'Transform your space with our professional decoration services. Whether it\'s interior painting, ceramic tiling, laminate flooring, or feature wall installation, our skilled craftsmen deliver stunning results that enhance your property\'s value and appeal.',
+    color: 'from-purple-500 to-pink-600'
   },
+  
+  // 3. Health & Wellness
   {
-    icon: FaLeaf,
-    title: 'Eco-Friendly',
-    description: 'Using environmentally safe products and sustainable practices',
-    details: 'We use non-toxic, biodegradable cleaning agents safe for children and pets. Our technology reduces water waste ensuring a deep, responsible clean.',
-    color: 'from-lime-400 to-green-600' 
+    icon: FaHeartbeat,
+    title: 'Health Services',
+    description: 'Comprehensive care and support for your well-being',
+    details: 'Your health matters to us. Our qualified health professionals provide confidential consultations, wellness programs, and personalized care. We work with you to create a healthier lifestyle in a comfortable, supportive environment.',
+    color: 'from-green-500 to-emerald-600'
   },
+  
+  // 4. Event Rentals
   {
-    icon: FaStar,
-    title: 'Trained Staff',
-    description: 'Professional, vetted, and thoroughly trained cleaners',
-    details: 'Every member undergoes a strict background check and intensive training. We employ professionals who understand the science of sanitation.',
-    color: 'from-cyan-400 to-blue-600'
+    icon: FaGlassCheers,
+    title: 'Event Rentals',
+    description: 'Quality tableware, cutlery, and display equipment for every occasion',
+    details: 'Make your event unforgettable with our premium rental collection. From elegant charger plates and cutlery to stunning food displayers and serving ware, we provide everything you need for weddings, parties, and corporate events.',
+    color: 'from-amber-500 to-orange-600'
   },
+  
+  // 5. B&B & Hospitality
   {
-    icon: FaUsers,
-    title: 'Local Team',
-    description: 'Proudly serving the Boston, UK community',
-    details: 'Based in Boston, we care about our reputation within our own community. When you call us, you’re talking to a neighbor, not a franchise.',
-    color: 'from-violet-500 to-purple-600'
+    icon: FaBed,
+    title: 'B&B Services',
+    description: 'Specialized cleaning and maintenance for guest accommodations',
+    details: 'Keep your guests coming back with our professional B&B cleaning services. We handle room turnover, deep cleaning, laundry, and common area maintenance, ensuring your property always meets the highest hospitality standards.',
+    color: 'from-indigo-500 to-blue-600'
   },
+  
+  // 6. 100% Satisfaction
   {
-    icon: FaAward,
-    title: 'Satisfaction',
-    description: '100% guaranteed or we\'ll re-clean for free',
-    details: 'If you aren’t 100% happy, notify us within 24 hours and we will return to re-clean that specific area immediately, free of charge.',
-    color: 'from-rose-500 to-pink-600'
+    icon: FaCheckCircle,
+    title: 'Satisfaction Guaranteed',
+    description: 'We stand behind every service with our 100% guarantee',
+    details: 'Your satisfaction is our priority. If you\'re not completely happy with any service—cleaning, decoration, health consultation, or rental—notify us within 24 hours and we\'ll make it right at no additional cost. That\'s our promise.',
+    color: 'from-red-500 to-rose-600'
   }
 ];
 
@@ -75,10 +90,10 @@ const WhyChooseUs = () => {
           className="text-center mb-16"
         >
           <h2 className="text-3xl md:text-5xl font-black text-white mb-6 tracking-tight">
-            Why Choose <span className="text-orange-500">Us?</span>
+            Why Choose <span className="text-orange-500">Isundunrin?</span>
           </h2>
           <p className="text-base md:text-lg text-gray-400 max-w-2xl mx-auto">
-            Experience the difference of a professional touch. Click a card to learn more.
+            From cleaning to decoration, health to events—we deliver excellence across every service. Click a card to learn more.
           </p>
         </motion.div>
 
@@ -148,7 +163,7 @@ const WhyChooseUs = () => {
 
               <button 
                 onClick={() => setSelectedReason(null)}
-                className="w-full py-4 bg-orange-500 text-white font-bold rounded-xl active:scale-95"
+                className="w-full py-4 bg-orange-500 text-white font-bold rounded-xl active:scale-95 hover:bg-orange-600 transition-all"
               >
                 Close Details
               </button>

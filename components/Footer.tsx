@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FaFacebook, FaTwitter, FaInstagram, FaGoogle, FaMapMarkerAlt } from 'react-icons/fa';
 import { HiLogout, HiMail, HiTrash } from 'react-icons/hi';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase'; // Added db import
+import { doc, onSnapshot } from 'firebase/firestore'; // Added firestore imports
 import { 
   onAuthStateChanged, 
   signInWithPopup, 
@@ -20,11 +21,15 @@ const Footer = () => {
   const [isEmailUser, setIsEmailUser] = useState(false);
   const router = useRouter();
 
+  // --- DYNAMIC DATA STATES ---
+  const [siteSettings, setSiteSettings] = useState<any>({});
+  const [contactInfo, setContactInfo] = useState<any>({});
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    // 1. Auth Listener
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser && currentUser.email) {
         setUser(currentUser);
-        // Check if the user has "password" in their provider data
         const hasPasswordProvider = currentUser.providerData.some(
           (provider) => provider.providerId === 'password'
         );
@@ -34,7 +39,22 @@ const Footer = () => {
         setIsEmailUser(false);
       }
     });
-    return () => unsubscribe();
+
+    // 2. Site Settings Listener (Logo, Name, Slogan, Quote)
+    const unsubSite = onSnapshot(doc(db, "settings", "site"), (snap) => {
+      if (snap.exists()) setSiteSettings(snap.data());
+    });
+
+    // 3. Contact Info Listener (Socials, Phone, Email, Address)
+    const unsubContact = onSnapshot(doc(db, "settings", "contact_info"), (snap) => {
+      if (snap.exists()) setContactInfo(snap.data());
+    });
+
+    return () => {
+      unsubscribeAuth();
+      unsubSite();
+      unsubContact();
+    };
   }, []);
 
   const handleGoogleAuth = async () => {
@@ -63,29 +83,32 @@ const Footer = () => {
   return (
     <footer className="bg-black text-white pt-16 pb-8 border-t border-white/5">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+        <div className="mx-auto grid grid-cols-1 md:grid-cols-5 gap-14 mb-12">
           
           {/* Company & Auth Section */}
-          <div className="space-y-8">
+          <div className="md:col-span-2 space-y-8">
             <div>
               <div className="mb-2 flex items-center gap-1 md:gap-3">
                 <img 
-                  src="/favicon.png" 
-                  alt="BristolClean Logo" 
+                  src={siteSettings.logoUrl || "/favicon.png"} 
+                  alt="Logo" 
                   className="w-8 h-8 md:w-10 md:h-10 object-contain rounded-full"
                 />
                 <div className="flex flex-col">
                   <h3 className="text-[10px] md:text-2xl font-black uppercase tracking-tighter leading-none">
-                    Bristol<span className="text-orange-500">Clean</span>
+                    {siteSettings.siteName?.split(/(?=[A-Z])/)[0] || "Bristol"}
+                    <span className="text-orange-500">
+                      {siteSettings.siteName?.split(/(?=[A-Z])/)[1] || "Clean"}
+                    </span>
                   </h3>
                   <div className="w-full h-[1px] bg-zinc-800 my-1 md:my-1.5" />
                   <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 leading-none italic">
-                    Premier Cleaning
+                    {siteSettings.siteSlogan || "Premier Cleaning"}
                   </p>
                 </div>
               </div>
               <p className="text-gray-400 text-sm leading-relaxed">
-                Making Bristol sparkle. Professional eco-friendly cleaning services you can trust.
+                {siteSettings.siteQuote || "Making Bristol sparkle. Professional eco-friendly cleaning services you can trust."}
               </p>
             </div>
             
@@ -120,7 +143,6 @@ const Footer = () => {
                       <HiLogout size={14} /> Sign Out
                     </button>
 
-                    {/* DYNAMIC DATA DELETION LINK */}
                     {isEmailUser && (
                       <Link 
                         href="/delete-account" 
@@ -161,19 +183,26 @@ const Footer = () => {
           <div className="space-y-6">
             <h4 className="text-xs font-black text-orange-500 uppercase tracking-[0.2em]">Connect</h4>
             <div className="flex space-x-4">
-              <a href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-orange-500 hover:text-white transition-all">
-                <FaFacebook size={18} />
-              </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-orange-500 hover:text-white transition-all">
-                <FaTwitter size={18} />
-              </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-orange-500 hover:text-white transition-all">
-                <FaInstagram size={18} />
-              </a>
+              {contactInfo.facebook && (
+                <a href={contactInfo.facebook} target="_blank" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-orange-500 hover:text-white transition-all">
+                  <FaFacebook size={18} />
+                </a>
+              )}
+              {contactInfo.twitter && (
+                <a href={contactInfo.twitter} target="_blank" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-orange-500 hover:text-white transition-all">
+                  <FaTwitter size={18} />
+                </a>
+              )}
+              {contactInfo.instagram && (
+                <a href={contactInfo.instagram} target="_blank" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-orange-500 hover:text-white transition-all">
+                  <FaInstagram size={18} />
+                </a>
+              )}
             </div>
             <div className="pt-2">
               <p className="text-gray-400 text-xs flex items-center gap-3">
-                <FaMapMarkerAlt className="text-orange-500" /> Bristol, United Kingdom
+                <FaMapMarkerAlt className="text-orange-500" /> 
+                {contactInfo.officeAddress ? `${contactInfo.officeAddress}, ${contactInfo.officeCity}` : "Bristol, United Kingdom"}
               </p>
             </div>
           </div>
@@ -181,8 +210,8 @@ const Footer = () => {
 
         {/* Bottom Bar */}
         <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-gray-600 text-[9px] uppercase font-bold tracking-[0.2em]">
-            © {new Date().getFullYear()} BristolClean. All rights reserved.
+          <p className="text-center md:text-left text-gray-600 text-[9px] uppercase font-bold tracking-[0.2em]">
+            {siteSettings.footerText || `© ${new Date().getFullYear()} BristolClean. All rights reserved.`}
           </p>
           <div className="flex space-x-6 text-[9px] uppercase font-bold tracking-widest text-gray-600">
             <Link href="/policy" className="hover:text-white transition-colors">Privacy & Terms</Link>

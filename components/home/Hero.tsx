@@ -5,49 +5,84 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { FaMagic, FaShieldAlt, FaClock, FaHeadset } from 'react-icons/fa';
 import QuickBooking from "../booking/QuickBooking";
-
-// Edit this list to add or change images
-const HERO_IMAGES = [
-  "https://maidinparadiseflorida.com/wp-content/uploads/2024/02/cheerful-black-lady-holding-bucket-of-cleaning-sup-2023-11-27-05-24-08-utc1.png",
-  "https://img.freepik.com/free-photo/professional-cleaning-service-person-using-vacuum-cleaner-office_23-2150520631.jpg",
-  "https://static.vecteezy.com/system/resources/thumbnails/069/923/000/small/professional-african-american-man-cleaning-office-desk-with-cloth-and-cleaning-supplies-photo.jpeg",
-  "https://thecleaningladies.ca/media/images/action-shot3.jpg?width=768&height=550&loading=eager",
-];
+import { db } from "@/lib/firebase";
+import { collection, query, orderBy, onSnapshot, doc } from "firebase/firestore";
 
 const Hero = () => {
+  const [slides, setSlides] = useState<any[]>([]);
+  const [globalAttract, setGlobalAttract] = useState("");
   const [currentImage, setCurrentImage] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  // FETCH REAL-TIME DATA
+  useEffect(() => {
+    // 1. Fetch Slides
+    const unsubSlides = onSnapshot(
+      query(collection(db, "global_slides"), orderBy("order", "asc")),
+      (snap) => {
+        const slideData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setSlides(slideData);
+        setLoading(false);
+      }
+    );
+
+    // 2. Fetch Global Attract Text
+    const unsubAttract = onSnapshot(doc(db, "settings", "slideshow"), (snap) => {
+      if (snap.exists()) {
+        setGlobalAttract(snap.data().attract || "");
+      }
+    });
+
+    return () => {
+      unsubSlides();
+      unsubAttract();
+    };
+  }, []);
 
   // Interval logic to change images
   useEffect(() => {
+    if (slides.length <= 1) return;
+    
     const timer = setInterval(() => {
-      setCurrentImage((prev) => (prev + 1) % HERO_IMAGES.length);
-    }, 10000); // 10000ms = 10 seconds
+      setCurrentImage((prev) => (prev + 1) % slides.length);
+    }, 10000); 
+    
     return () => clearInterval(timer);
-  }, []);
+  }, [slides.length]);
+
+  if (loading || slides.length === 0) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  const activeSlide = slides[currentImage];
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Background with image rotation */}
+      {/* Background with dynamic image rotation */}
       <div className="absolute inset-0">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentImage}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{ opacity: 0, scale: 1.1 }}
+            animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 1 }}
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-1000"
+            transition={{ duration: 1.5 }}
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
             style={{
-              backgroundImage: `url("${HERO_IMAGES[currentImage]}")`,
+              backgroundImage: `url("${activeSlide.url}")`,
             }}
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/40 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/50 to-transparent"></div>
           </motion.div>
         </AnimatePresence>
       </div>
 
       {/* Content */}
-      <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-25 md:py-33">
+      <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-25 md:py-33">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Left Column */}
           <motion.div
@@ -55,42 +90,57 @@ const Hero = () => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <Link href="tel:+447565123627" className="md:hidden mb-2 w-full bg-black/50 rounded-lg text-xs flex justify-center items-center gap-2 p-2 underline font-bold text-gray-50 hover:bg-gray-900">
-              <FaHeadset size={15} className="text-white font-black" /> 
+            <Link href="tel:+447565123627" className="md:hidden mb-4 w-fit bg-black/50 backdrop-blur-md rounded-full text-[10px] flex items-center gap-2 px-4 py-2 border border-white/10 font-bold text-gray-50 hover:bg-gray-900 transition-all">
+              <FaHeadset className="text-orange-500" /> 
               <span>+44 7565 12 3627</span>
             </Link>
 
-            <h1 className="text-3xl md:text-4xl lg:text-6xl font-bold text-white mb-4 md:mb-6">
-              Professional Cleaning Services in{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-orange-500">
-                Bristol, UK
-              </span>
-            </h1>
+            {/* FIXED HEIGHT CONTAINER TO PREVENT SHAKING */}
+            <div className="mb-2 h-[120px] md:h-[180px] lg:h-[200px] flex items-center">
+              <AnimatePresence mode="wait">
+                <motion.h1 
+                  key={currentImage}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tighter leading-[0.95]"
+                >
+                  {activeSlide.quote}{' '}
+                  <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-orange-500 block md:inline mt-2 md:mt-0">
+                    in Bristol, UK
+                  </span>
+                </motion.h1>
+              </AnimatePresence>
+            </div>
             
-            <p className="text-lg text-gray-300 mb-8 max-w-lg">
-              Experience the sparkle of a professionally cleaned home or office. 
-              We bring eco-friendly excellence to every corner of Bristol and surrounding areas.
-            </p>
+            {/* GLOBAL ATTRACT TEXT */}
+            <div className="h-20 md:h-16 flex items-start"> {/* Small reserved height for attract text too */}
+              {globalAttract && (
+                <p className="text-lg text-gray-300 mb-8 max-w-lg leading-relaxed font-medium">
+                  {globalAttract}
+                </p>
+              )}
+            </div>
 
-            <div className="flex flex-col md:flex-row gap-4">
+            <div className="mt-15 flex flex-col md:flex-row gap-4">
               <Link
                 href="/services"
-                className="text-center w-full bg-gradient-to-r from-green-500 to-orange-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:from-green-600 hover:to-orange-600 transition-all transform hover:scale-105 shadow-lg"
+                className="text-center w-full md:w-auto bg-orange-600 text-white px-10 py-4 rounded-xl text-sm font-black uppercase tracking-widest hover:bg-orange-700 transition-all transform hover:scale-105 shadow-xl shadow-orange-600/20"
               >
                 Book Now
               </Link>
               <Link
                 href="/about"
-                className="text-center w-full bg-white/10 backdrop-blur-sm text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white/20 transition-all border border-white/20"
+                className="text-center w-full md:w-auto bg-white/10 backdrop-blur-md text-white px-10 py-4 rounded-xl text-sm font-black uppercase tracking-widest hover:bg-white/20 transition-all border border-white/10"
               >
                 Learn More
               </Link>
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-6 mt-10">
+            <div className="grid grid-cols-3 gap-6 mt-12 pt-8 border-t border-white/10">
               {[
-                { icon: FaMagic , value: '500+', label: 'Happy Clients' },
+                { icon: FaMagic, value: '500+', label: 'Happy Clients' },
                 { icon: FaShieldAlt, value: '100%', label: 'Eco-Friendly' },
                 { icon: FaClock, value: '24/7', label: 'Availability' },
               ].map((stat, index) => (
@@ -99,23 +149,40 @@ const Hero = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 + index * 0.1 }}
-                  className="text-center"
                 >
-                  <stat.icon className="text-3xl text-orange-500 mx-auto mb-2" />
-                  <div className="text-xl font-bold text-white">{stat.value}</div>
-                  <div className="text-sm text-gray-400">{stat.label}</div>
+                  <stat.icon className="text-2xl text-orange-500 mb-2" />
+                  <div className="text-lg font-black text-white">{stat.value}</div>
+                  <div className="text-[10px] uppercase font-bold tracking-widest text-gray-500">{stat.label}</div>
                 </motion.div>
               ))}
             </div>
           </motion.div>
 
           {/* Right Column - Booking Form Preview */}
-          <QuickBooking/>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="w-full max-w-[35rem] absolute top-34 right-8"
+          >
+            <QuickBooking />
+          </motion.div>
         </div>
       </div>
 
-      {/* Decorative Elements */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black to-transparent"></div>
+      {/* Dynamic Slide Indicators */}
+      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+        {slides.map((_, idx) => (
+          <button 
+            key={idx} 
+            onClick={() => setCurrentImage(idx)}
+            className={`h-1.5 rounded-full transition-all duration-500 ${idx === currentImage ? "w-10 bg-orange-500" : "w-3 bg-white/20 hover:bg-white/40"}`}
+          />
+        ))}
+      </div>
+
+      {/* Bottom Gradient Fade */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black to-transparent pointer-events-none"></div>
     </div>
   );
 };

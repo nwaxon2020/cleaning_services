@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiPlus, FiMinus, FiHelpCircle, FiCalendar, 
@@ -8,64 +8,63 @@ import {
   FiArrowRight, FiSearch, FiX 
 } from 'react-icons/fi';
 import Link from 'next/link';
-import { FaMessage } from 'react-icons/fa6';
+import { db } from '@/lib/firebase';
+import { collection, query, orderBy, onSnapshot, doc } from 'firebase/firestore';
 
 const FaqPageUi = () => {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const mockContent = {
-    faqSubtitle: "Everything you need to know about our professional cleaning standards",
-    faqCategories: [
-      {
-        category: "Booking & Scheduling",
-        questions: [
-          { q: "How do I book a cleaning session?", a: "You can book directly through our online portal by selecting a service, choosing an available date, and confirming your details." },
-          { q: "Can I reschedule or cancel my booking?", a: "Yes, you can reschedule or cancel up to 24 hours before your appointment without any fee." },
-          { q: "Do I need to be home during the cleaning?", a: "No, many of our clients provide us with a spare key or entry code. All our staff are fully vetted." }
-        ]
-      },
-      {
-        category: "Payments & Pricing",
-        questions: [
-          { q: "What payment methods do you accept?", a: "We accept all major credit/debit cards, bank transfers, and secure online payments. We do not accept cash." },
-          { q: "Are there any hidden fees?", a: "None at all. The price you see during booking is the final price." }
-        ]
-      },
-      {
-        category: "Service Standards",
-        questions: [
-          { q: "What cleaning products do you use?", a: "We use high-quality, eco-friendly, and non-toxic cleaning products safe for pets and children." },
-          { q: "What if I am not happy with the service?", a: "We offer a 100% Satisfaction Guarantee. Notify us within 24 hours for a free re-clean." }
-        ]
-      },
-      {
-        category: "Security & Account",
-        questions: [
-          { q: "How is my personal information protected?", a: "We use industry-standard SSL encryption. Your payment info is processed through secure gateways." },
-          { 
-            q: "How can I delete my account and personal data?", 
-            a: "You can permanently delete your account and profile data through your settings. This cannot be undone.",
-            link: "/delete-account",
-            linkText: "Go to Deletion Page"
-          }
-        ]
-      }
-    ]
-  };
+  // --- REAL-TIME DATABASE STATES ---
+  const [faqSubtitle, setFaqSubtitle] = useState("");
+  const [categories, setCategories] = useState<any[]>([]);
+  const [questions, setQuestions] = useState<any[]>([]);
 
-  // --- Search Logic ---
+  // --- DATA FETCHING ---
+  useEffect(() => {
+    // 1. Fetch Subtitle
+    const unsubSettings = onSnapshot(doc(db, "settings", "faq"), (snap) => {
+      if (snap.exists()) setFaqSubtitle(snap.data().subtitle || '');
+    });
+
+    // 2. Fetch Categories
+    const unsubCategories = onSnapshot(
+      query(collection(db, "faq_categories"), orderBy("order", "asc")),
+      (snap) => setCategories(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    );
+
+    // 3. Fetch Questions
+    const unsubQuestions = onSnapshot(
+      query(collection(db, "faq_questions"), orderBy("order", "asc")),
+      (snap) => setQuestions(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    );
+
+    return () => {
+      unsubSettings();
+      unsubCategories();
+      unsubQuestions();
+    };
+  }, []);
+
+  // --- Search Logic (Real-time) ---
   const filteredCategories = useMemo(() => {
-    if (!searchQuery) return mockContent.faqCategories;
+    // Map categories and nest their corresponding questions
+    const data = categories.map(cat => ({
+      category: cat.name,
+      id: cat.id,
+      questions: questions.filter(q => q.categoryId === cat.id)
+    }));
+
+    if (!searchQuery) return data.filter(cat => cat.questions.length > 0);
     
-    return mockContent.faqCategories.map(cat => ({
+    return data.map(cat => ({
       ...cat,
       questions: cat.questions.filter(q => 
         q.q.toLowerCase().includes(searchQuery.toLowerCase()) || 
         q.a.toLowerCase().includes(searchQuery.toLowerCase())
       )
     })).filter(cat => cat.questions.length > 0);
-  }, [searchQuery]);
+  }, [searchQuery, categories, questions]);
 
   const getIcon = (category: string) => {
     const cat = category.toLowerCase();
@@ -87,7 +86,7 @@ const FaqPageUi = () => {
             </h1>
           </div>
           <p className="text-slate-500 mt-2 text-[10px] font-bold uppercase tracking-[0.3em]">
-            {mockContent.faqSubtitle}
+            {faqSubtitle || "Everything you need to know about our professional cleaning standards"}
           </p>
         </div>
 
@@ -116,7 +115,7 @@ const FaqPageUi = () => {
         {/* --- FAQ CONTENT --- */}
         {filteredCategories.length > 0 ? (
           filteredCategories.map((category, catIndex) => (
-            <motion.div layout key={category.category} className="mb-12">
+            <motion.div layout key={category.id} className="mb-12">
               <div className="flex items-center gap-3 mb-6 border-b border-slate-200 pb-3">
                 <span className="text-orange-600 text-xl">{getIcon(category.category)}</span>
                 <h2 className="text-sm font-black uppercase tracking-widest text-slate-900">
@@ -125,13 +124,13 @@ const FaqPageUi = () => {
               </div>
 
               <div className="space-y-4">
-                {category.questions.map((item, qIndex) => {
-                  const globalIndex = catIndex * 100 + qIndex; 
-                  const isOpen = activeIndex === globalIndex;
+                {category.questions.map((item: any, qIndex: number) => {
+                  const uniqueKey = `${category.id}-${item.id}`; 
+                  const isOpen = activeIndex === (catIndex * 1000 + qIndex);
 
                   return (
-                    <div key={qIndex} className={`bg-white rounded-2xl border transition-all duration-300 ${isOpen ? 'border-orange-500 shadow-xl shadow-orange-500/5' : 'border-slate-100'}`}>
-                      <button onClick={() => setActiveIndex(isOpen ? null : globalIndex)} className="w-full flex items-center justify-between p-5 text-left">
+                    <div key={item.id} className={`bg-white rounded-2xl border transition-all duration-300 ${isOpen ? 'border-orange-500 shadow-xl shadow-orange-500/5' : 'border-slate-100'}`}>
+                      <button onClick={() => setActiveIndex(isOpen ? null : (catIndex * 1000 + qIndex))} className="w-full flex items-center justify-between p-5 text-left">
                         <span className={`text-xs md:text-sm font-bold uppercase tracking-tight ${isOpen ? 'text-orange-600' : 'text-slate-800'}`}>
                           {item.q}
                         </span>
@@ -147,7 +146,7 @@ const FaqPageUi = () => {
                               {item.link && (
                                 <div className="mt-4">
                                   <Link href={item.link} className="inline-flex items-center gap-2 text-orange-600 font-black uppercase text-[10px] tracking-widest hover:underline">
-                                    {item.linkText} <FiArrowRight />
+                                    {item.linkText || "Learn More"} <FiArrowRight />
                                   </Link>
                                 </div>
                               )}

@@ -1,9 +1,9 @@
-import AdminSettingsUi from "@/ui/admin/SettingsUi";
+import AdminSettingsUi from "@/ui/admin/settings/SettingsDashboardUi";
 
 export const metadata = {
-  title: "Manage Settings | Admin",
+  title: "Manage All Settings",
 };
 
-export default function AboutSettings() {
+export default function SettingsDashboard() {
     return <AdminSettingsUi/>
 }

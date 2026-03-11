@@ -19,10 +19,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BristolClean | Professional Cleaning Services",
+  title: "Isundunrin Services | Professional Cleaning Services",
   description: "Premier cleaning services in Bristol, UK. Expert residential and commercial cleaning with hospital-grade standards.",
   keywords: ["Cleaning Services Bristol", "Office Cleaning Lincolnshire", "Domestic Cleaners", "Professional House Cleaning"],
-  authors: [{ name: "BristolClean Team" }],
+  authors: [{ name: "Isundunrin Team" }],
   
   // Open Graph (Facebook, WhatsApp, LinkedIn)
   openGraph: {

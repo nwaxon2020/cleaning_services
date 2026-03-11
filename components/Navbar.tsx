@@ -22,6 +22,9 @@ const Navbar = () => {
   const [unreadCount, setUnreadCount] = useState(0); 
   const [uploading, setUploading] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
+  
+  const [siteData, setSiteData] = useState<any>(null);
+
   const pathname = usePathname();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -29,18 +32,28 @@ const Navbar = () => {
 
   const ADMIN_ID = process.env.NEXT_PUBLIC_ADMIN_ID; 
 
-  // Page classification logic
   const whitePages = ["/about", "/faq", "/login", "/services"];
   const isWhitePage = whitePages.includes(pathname);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
+
+    // REAL-TIME SITE SETTINGS LISTENER - Added error handling for public access
+    const unsubSite = onSnapshot(doc(db, "settings", "site"), 
+      (snap) => {
+        if (snap.exists()) {
+          setSiteData(snap.data());
+        }
+      },
+      (err) => {
+        if (err.code !== 'permission-denied') console.error("Site Settings Error:", err);
+      }
+    );
     
     let unsubscribeSnapshot: (() => void) | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      // 1. CLEAR PREVIOUS LISTENER IMMEDIATELY
       if (unsubscribeSnapshot) {
         unsubscribeSnapshot();
         unsubscribeSnapshot = null;
@@ -49,7 +62,7 @@ const Navbar = () => {
       if (currentUser?.email) {
         setUser(currentUser);
         
-        // 2. START NEW LISTENER
+        // Ensure listeners only fire if we have the correct UID and roles
         if (currentUser.uid === ADMIN_ID) {
           unsubscribeSnapshot = onSnapshot(collection(db, "chats"), 
             (snapshot) => {
@@ -58,8 +71,8 @@ const Navbar = () => {
               setUnreadCount(total);
             },
             (err) => {
-              // CATCH THE PERMISSION ERROR HERE
-              if (err.code !== 'permission-denied') console.error(err);
+              // SILENCE permission errors in the console for non-admin users
+              if (err.code !== 'permission-denied') console.error("Admin Chat Error:", err);
             }
           );
         } else {
@@ -68,8 +81,7 @@ const Navbar = () => {
               if (docSnap.exists()) setUnreadCount(docSnap.data().unreadCountUser || 0);
             },
             (err) => {
-              // CATCH THE PERMISSION ERROR HERE
-              if (err.code !== 'permission-denied') console.warn("Chat listener detached safely.");
+              if (err.code !== 'permission-denied') console.warn("User Chat Error:", err.message);
             }
           );
         }
@@ -88,6 +100,7 @@ const Navbar = () => {
       window.removeEventListener("scroll", handleScroll);
       document.removeEventListener("mousedown", handleClickOutside);
       unsubscribeAuth();
+      unsubSite();
       if (unsubscribeSnapshot) unsubscribeSnapshot();
     };
   }, [ADMIN_ID]);
@@ -145,18 +158,15 @@ const Navbar = () => {
       const snapshot = await uploadBytes(storageRef, file, metadata);
       const downloadURL = await getDownloadURL(snapshot.ref);
       
-      // Update Firebase Auth profile
       await updateProfile(user, { photoURL: downloadURL });
       
-      // FIX: Use setDoc with merge instead of updateDoc
-      // This will create the document if it doesn't exist, or update if it does
       const userRef = doc(db, "users", user.uid);
       await setDoc(userRef, { 
         photoURL: downloadURL,
         email: user.email,
         displayName: user.displayName,
         lastUpdated: serverTimestamp()
-      }, { merge: true }); // merge: true ensures we don't overwrite existing fields
+      }, { merge: true }); 
       
       toast.success("Avatar updated!");
       window.location.reload();
@@ -182,31 +192,32 @@ const Navbar = () => {
 
   const isAboutActive = aboutLinks.some(link => link.href === pathname);
 
+  const siteName = siteData?.siteName || "";
+  const nameParts = siteName.split(" ");
+  const firstWord = nameParts[0];
+  const secondWord = nameParts.slice(1).join(" ");
+
   return (
     <nav className={`fixed left-0 right-0 z-[30] transition-all duration-500 ease-in-out ${scrolled ? "top-2 px-3" : "top-0 px-0"}`}>
       <div className={`max-w-8xl mx-auto transition-all duration-500 px-4 md:px-10 flex justify-between items-center ${scrolled ? "bg-black/90 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl h-14 md:h-16" : "bg-black/20 md:bg-transparent h-16 md:h-20 border-transparent"}`}>
         
         <Link href="/" className="group flex items-center gap-2 shrink-0">
-          {/* LOGO IMAGE */}
           <img 
-            src="/favicon.png" 
-            alt="BostonClean Logo" 
-            className="w-8 h-8 md:w-11 md:h-11 rounded-full object-contain transition-transform group-hover:scale-110 duration-300"
+            src={siteData?.logoUrl || "/favicon.png"} 
+            alt="Site Logo" 
+            className="bg-white w-8 h-8 md:w-11 md:h-11 rounded-full object-contain transition-transform group-hover:scale-110 duration-300"
           />
 
-          {/* TEXT CONTAINER */}
           <div className="flex flex-col justify-center">
-            {/* TITLE */}
-            <span className={`text-[10px] md:text-xl font-black tracking-tighter ${isWhitePage ? "text-zinc-400" : "text-white"} leading-none uppercase`}>
-              BRISTOL<span className="text-orange-500 group-hover:text-orange-400 transition-colors">CLEAN</span>
+            <span className={`text-[10px] md:text-xl font-black tracking-tighter leading-none uppercase`}>
+              <span className={isWhitePage ? "text-zinc-400" : "text-white"}>{firstWord}</span>
+              <span className="text-orange-500 group-hover:text-orange-400 transition-colors">{secondWord}</span>
             </span>
 
-            {/* SEPARATOR LINE */}
             <div className="w-full h-[1px] bg-white/20 mt-1 mb-1 group-hover:bg-orange-500/50 transition-colors" />
 
-            {/* SUBTITLE */}
             <span className="text-[8px] md:text-[10px] font-bold tracking-[0.2em] text-zinc-400 uppercase leading-none italic">
-              Premier Cleaning
+              {siteData?.siteSlogan || ""}
             </span>
           </div>
         </Link>
@@ -220,11 +231,11 @@ const Navbar = () => {
               className={`relative px-4 py-2 text-sm uppercase tracking-widest font-semibold transition-colors duration-300 ${
                 pathname === link.href
                   ? isWhitePage
-                    ? "text-orange-500 font-black" // Active state on WHITE pages
-                    : "text-white font-black"      // Active state on DARK pages
+                    ? "text-orange-500 font-black" 
+                    : "text-white font-black" 
                   : isWhitePage
-                    ? "text-slate-400 hover:text-orange-500" // Inactive state on WHITE pages
-                    : "text-gray-200 hover:text-white"       // Inactive state on DARK pages
+                    ? "text-slate-400 hover:text-orange-500" 
+                    : "text-gray-200 hover:text-white"
               }`}
             >
               {link.name}
@@ -237,7 +248,6 @@ const Navbar = () => {
             </Link>
           ))}
 
-          {/* About Dropdown with Hover */}
           <div 
             className="relative group h-full flex items-center" 
             ref={aboutRef}
@@ -269,7 +279,6 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* Action Area */}
         <div className="flex items-center gap-2 md:gap-4 shrink-0 relative" ref={dropdownRef}>
           {user && user.uid === ADMIN_ID ? (
             <Link href="/admin" className="p-2 bg-orange-500/10 text-orange-400 font-black rounded-lg hover:bg-orange-500 hover:text-white transition-all">
@@ -291,7 +300,7 @@ const Navbar = () => {
                 </div>
               </div>
             ) : (
-              <Link href="/login" className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-orange-500 text-white text-[10px] md:text-xs font-black uppercase tracking-widest rounded-lg hover:bg-orange-600 transition-all">
+              <Link href="/login" onClick={() => setIsOpen(false)} className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-orange-500 text-white text-[10px] md:text-xs font-black uppercase tracking-widest rounded-lg hover:bg-orange-600 transition-all">
                 <HiUserCircle size={16} /> <span className="hidden md:inline">Sign In</span>
               </Link>
             )}

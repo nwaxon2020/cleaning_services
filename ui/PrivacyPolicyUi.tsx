@@ -3,56 +3,233 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { db } from '@/lib/firebase';
+import { collection, query, orderBy, onSnapshot, doc, } from 'firebase/firestore';
 import { 
   FiShield, FiEye, FiLock, FiRefreshCw, 
   FiCheckCircle, FiChevronRight, 
-  FiInfo, FiClock, FiCalendar, FiChevronLeft, FiZap, FiTrash2 
+  FiClock, FiCalendar, FiChevronLeft, FiZap, FiTrash2,
+  FiHome, FiInfo, FiHeart, FiPackage
 } from 'react-icons/fi';
 
-const HERO_IMAGES = [
-  "https://thecleaningladies.ca/media/images/action-shot3.jpg?width=768&height=550&loading=eager",
-  "https://maidinparadiseflorida.com/wp-content/uploads/2024/02/cheerful-black-lady-holding-bucket-of-cleaning-sup-2023-11-27-05-24-08-utc1.png",
-  "https://static.vecteezy.com/system/resources/thumbnails/069/923/000/small/professional-african-american-man-cleaning-office-desk-with-cloth-and-cleaning-supplies-photo.jpeg",
-  "https://img.freepik.com/free-photo/professional-cleaning-service-person-using-vacuum-cleaner-office_23-2150520631.jpg",
-];
+// Define types for the policy data
+interface PolicyData {
+  title: string;
+  subtitle: string;
+  effectiveDate: string;
+  footerEmail: string;
+  footerAddress: string;
+  footerNote: string;
+}
+
+interface SectionsData {
+  collectionIntro: string;
+  collectionItems: string[];
+  usagePoints: string[];
+  usageRecurringNote: string;
+  refundGuarantee: string;
+  refundEligibilityPoints: string[];
+  refundClaimNote: string;
+  refundTimelinePoints: string[];
+  securityIntro: string;
+  securityPoints: string[];
+  securityCompliance: string;
+  deletionIntro: string;
+  deletionIncludes: string[];
+  deletionInstruction: string;
+  deletionNote: string;
+  cleaningPolicyPoints: string[];
+  decorationPolicyPoints: string[];
+  healthPolicyPoints: string[];
+  rentalPolicyPoints: string[];
+}
 
 const PrivacyPageUi = () => {
   const [activeSection, setActiveSection] = useState('collection');
   const [currentImg, setCurrentImg] = useState(0);
-  const [lastUpdated, setLastUpdated] = useState<string>("");
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  // ===== STATE FOR FIREBASE DATA =====
+  const [heroImages, setHeroImages] = useState<string[]>([]);
+  const [policyData, setPolicyData] = useState<PolicyData>({
+    title: 'Privacy & Service Policy',
+    subtitle: 'Ensuring trust and transparency across every service',
+    effectiveDate: 'March 11, 2026',
+    footerEmail: 'privacy@isundunrin.co.uk',
+    footerAddress: 'Data Protection Officer, Isundunrin Services, Bristol, UK',
+    footerNote: 'Last updated: March 11, 2026. We may update this policy periodically. Continued use of our services constitutes acceptance of any changes.'
+  });
+
+  const [sectionsData, setSectionsData] = useState<SectionsData>({
+    // Section 01
+    collectionIntro: 'To provide the highest standard of cleaning, decoration, health services, and event rentals, we collect specific details necessary for logistics, safety, and service delivery. This information is never sold to third parties.',
+    collectionItems: [
+      'Property Access Details - Keys, codes, or access instructions for cleaning and decoration services',
+      'Service Requirements - Specific needs for each service type (cleaning preferences, decoration specifications, health consultation details, rental quantities)',
+      'Contact Information - Name, phone, email, and address for all service communications',
+      'Payment Identifiers - Secure payment processing through encrypted gateways',
+      'Health Information - Relevant medical history when booking health services (with explicit consent)',
+      'Event Details - Dates, guest counts, and setup requirements for rental services',
+      'Feedback & Reviews - Your opinions help us improve all our services',
+      'Site Usage Data - Analytics to enhance your browsing experience'
+    ],
+    
+    // Section 02
+    usagePoints: [
+      'Scheduling professional cleaners, decorators, health practitioners, and delivery personnel',
+      'Processing secure payments across all services',
+      'Communicating service updates, appointment reminders, and follow-ups',
+      'Customizing your service experience based on preferences and history',
+      'Improving our service offerings through anonymized analytics'
+    ],
+    usageRecurringNote: 'For recurring clients, sensitive information (like key-holding details or health records) is stored in an encrypted vault accessible only by authorized management personnel.',
+    
+    // Section 03
+    refundGuarantee: '100% Satisfaction Guarantee',
+    refundEligibilityPoints: [
+      'A scheduled service is missed by our team without notification',
+      'The service does not meet our quality standards (cleaning, decoration work, health consultations, or rental item condition)',
+      'Items rented arrive damaged or not as described'
+    ],
+    refundClaimNote: 'Claims must be filed within 24 hours of service completion through your account dashboard or by contacting support.',
+    refundTimelinePoints: [
+      'Approved refunds are processed to the original payment method within 3-5 business days',
+      'For cancellations made with less than 24 hours\' notice, a 20% administrative fee may apply',
+      'For rental cancellations, deposits are fully refundable up to 7 days before the event',
+      'Decoration project deposits are partially refundable based on materials already purchased'
+    ],
+    
+    // Section 04
+    securityIntro: 'We employ industry-standard SSL encryption for all transactions across our platform. Our staff across all service divisions are:',
+    securityPoints: [
+      'Fully DBS checked and vetted',
+      'Trained in data protection protocols',
+      'Sign strict non-disclosure agreements regarding the privacy of your home, office, health information, or event details'
+    ],
+    securityCompliance: 'All sensitive data is stored in compliance with UK data protection regulations (GDPR).',
+    
+    // Section 05
+    deletionIntro: 'We respect your \'Right to be Forgotten\' under UK data protection law. Users may request the complete removal of their personal data, including:',
+    deletionIncludes: [
+      'Booking history across all services',
+      'Review logs and feedback',
+      'Profile identifiers and contact details',
+      'Stored access instructions',
+      'Health records (with consent withdrawal)'
+    ],
+    deletionInstruction: 'The direct link to manage and delete your personal data is located in your account settings under "Privacy & Data". Note: You must be signed in with email & password to proceed with deletion. Account deletion is permanent and cannot be undone.',
+    deletionNote: 'Deletion requests are processed within 30 days.',
+    
+    // Section 06
+    cleaningPolicyPoints: [
+      'We reserve the right to refuse service if the property poses health or safety risks',
+      'Valuable items should be secured before our team arrives',
+      'Damage caused by our team is covered by our insurance'
+    ],
+    decorationPolicyPoints: [
+      'Quotes are valid for 30 days',
+      'Material costs may fluctuate based on availability',
+      'Final payment is due upon completion and your satisfaction'
+    ],
+    healthPolicyPoints: [
+      'All consultations are confidential',
+      'Cancel health appointments at least 24 hours in advance',
+      'Emergency contact information must be provided'
+    ],
+    rentalPolicyPoints: [
+      'Security deposits required for all rentals',
+      'Items must be returned in clean condition',
+      'Late returns incur daily fees'
+    ]
+  });
+
+  // ===== FETCH DATA FROM FIREBASE IN REAL-TIME =====
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentImg((prev) => (prev + 1) % HERO_IMAGES.length);
-    }, 25000);
-    setLastUpdated(new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }));
-    return () => clearInterval(timer);
+    // Fetch hero images
+    const imagesQuery = query(collection(db, "policy_hero_images"), orderBy("order", "asc"));
+    const unsubImages = onSnapshot(imagesQuery, (snapshot) => {
+      const images = snapshot.docs.map(doc => doc.data().url);
+      setHeroImages(images);
+      setLoading(false);
+    });
+
+    // Fetch policy settings
+    const unsubSettings = onSnapshot(doc(db, "settings", "policy"), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setPolicyData(prev => ({
+          ...prev,
+          title: data.title || prev.title,
+          subtitle: data.subtitle || prev.subtitle,
+          effectiveDate: data.effectiveDate || prev.effectiveDate,
+          footerEmail: data.footerEmail || prev.footerEmail,
+          footerAddress: data.footerAddress || prev.footerAddress,
+          footerNote: data.footerNote || prev.footerNote
+        }));
+      }
+    });
+
+    // Fetch policy sections
+    const unsubSections = onSnapshot(doc(db, "settings", "policy_sections"), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setSectionsData(prev => ({
+          ...prev,
+          // Section 01
+          collectionIntro: data.collectionIntro || prev.collectionIntro,
+          collectionItems: data.collectionItems || prev.collectionItems,
+          
+          // Section 02
+          usagePoints: data.usagePoints || prev.usagePoints,
+          usageRecurringNote: data.usageRecurringNote || prev.usageRecurringNote,
+          
+          // Section 03
+          refundGuarantee: data.refundGuarantee || prev.refundGuarantee,
+          refundEligibilityPoints: data.refundEligibilityPoints || prev.refundEligibilityPoints,
+          refundClaimNote: data.refundClaimNote || prev.refundClaimNote,
+          refundTimelinePoints: data.refundTimelinePoints || prev.refundTimelinePoints,
+          
+          // Section 04
+          securityIntro: data.securityIntro || prev.securityIntro,
+          securityPoints: data.securityPoints || prev.securityPoints,
+          securityCompliance: data.securityCompliance || prev.securityCompliance,
+          
+          // Section 05
+          deletionIntro: data.deletionIntro || prev.deletionIntro,
+          deletionIncludes: data.deletionIncludes || prev.deletionIncludes,
+          deletionInstruction: data.deletionInstruction || prev.deletionInstruction,
+          deletionNote: data.deletionNote || prev.deletionNote,
+          
+          // Section 06
+          cleaningPolicyPoints: data.cleaningPolicyPoints || prev.cleaningPolicyPoints,
+          decorationPolicyPoints: data.decorationPolicyPoints || prev.decorationPolicyPoints,
+          healthPolicyPoints: data.healthPolicyPoints || prev.healthPolicyPoints,
+          rentalPolicyPoints: data.rentalPolicyPoints || prev.rentalPolicyPoints
+        }));
+      }
+    });
+
+    return () => {
+      unsubImages();
+      unsubSettings();
+      unsubSections();
+    };
   }, []);
 
-  const legal = {
-    policyTitle: "Privacy & Service Policy",
-    policySubtitle: "Ensuring trust and transparency in every clean",
-    policySections: {
-      collection: {
-        intro: "To provide the highest standard of cleaning, we collect specific details necessary for logistics and security. This information is never sold to third parties.",
-        checklist: ["Property Access Details", "Service Requirements", "Contact Information", "Payment Identifiers", "Feedback & Reviews", "Site Usage Data"]
-      },
-      usage: {
-        content: "Your data is used strictly for scheduling professional cleaners, processing secure payments, and communicating service updates. For recurring clients, key-holding information is stored in an encrypted vault accessible only by management."
-      },
-      payback: {
-        eligibility: "Refunds are eligible if a scheduled clean is missed by our team or if the service does not meet our 100% Satisfaction Guarantee. Claims must be filed within 24 hours of service.",
-        timeline: "Approved refunds are processed to the original payment method within 3-5 business days. For cancellations made by the client with less than 24 hours' notice, a 20% administrative fee may apply."
-      },
-      security: {
-        content: "We employ industry-standard SSL encryption for all transactions. Our staff are fully vetted and sign strict non-disclosure agreements regarding the privacy of your home or office."
-      },
-      deletion: {
-        content: "We respect your 'Right to be Forgotten'. Users may request the complete removal of their personal data, including booking history, review logs, and profile identifiers, at any time through our automated portal."
-      }
-    }
-  };
+  // ===== IMAGE SLIDER EFFECT =====
+  useEffect(() => {
+    if (heroImages.length === 0) return;
+    
+    const timer = setInterval(() => {
+      setCurrentImg((prev) => (prev + 1) % heroImages.length);
+    }, 25000);
+    
+    return () => clearInterval(timer);
+  }, [heroImages.length]);
+
+  // Use hero images from Firebase, fallback to empty array
+  const displayImages = heroImages.length > 0 ? heroImages : [];
 
   const sections = [
     { id: 'collection', title: 'Data Collection', icon: <FiEye /> },
@@ -60,7 +237,16 @@ const PrivacyPageUi = () => {
     { id: 'payback', title: 'Refunds & Guarantees', icon: <FiRefreshCw /> },
     { id: 'security', title: 'Security Standards', icon: <FiLock /> },
     { id: 'deletion', title: 'Data Rights & Erasure', icon: <FiTrash2 /> },
+    { id: 'serviceSpecific', title: 'Service Policies', icon: <FiPackage /> },
   ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] relative">
@@ -70,21 +256,25 @@ const PrivacyPageUi = () => {
         <div className="absolute inset-0 bg-black z-[5]" />
 
         <AnimatePresence mode="wait">
-          <motion.div
-            key={currentImg}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1.2 }}
-            className="absolute inset-0 z-[10]"
-          >
-            <div className="absolute inset-0 bg-black/70 z-20" />
-            <img 
-              src={HERO_IMAGES[currentImg]} 
-              className="w-full h-full object-cover" 
-              alt="Legal" 
-            />
-          </motion.div>
+          {displayImages.length > 0 ? (
+            <motion.div
+              key={currentImg}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1.2 }}
+              className="absolute inset-0 z-[10]"
+            >
+              <div className="absolute inset-0 bg-black/70 z-20" />
+              <img 
+                src={displayImages[currentImg]} 
+                className="w-full h-full object-cover" 
+                alt="Legal" 
+              />
+            </motion.div>
+          ) : (
+            <div className="absolute inset-0 z-[10] bg-gradient-to-r from-slate-900 to-slate-800" />
+          )}
         </AnimatePresence>
 
         <div className="relative z-[30] text-center px-6">
@@ -97,16 +287,16 @@ const PrivacyPageUi = () => {
           
           <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
             <h1 className="text-3xl md:text-5xl font-black uppercase italic text-white tracking-tighter leading-none mb-3">
-              {legal.policyTitle.split(' ')[0]} <span className="text-orange-500">{legal.policyTitle.split(' ').slice(1).join(' ')}</span>
+              {policyData.title.split(' ')[0]} <span className="text-orange-500">{policyData.title.split(' ').slice(1).join(' ')}</span>
             </h1>
             <div className="flex flex-col md:flex-row items-center justify-center gap-3">
                <p className="text-white/60 text-[9px] font-bold uppercase tracking-[0.3em]">
-                {legal.policySubtitle}
+                {policyData.subtitle}
               </p>
               <div className="hidden md:block w-1 h-1 bg-white/30 rounded-full" />
               <div className="inline-flex items-center gap-2 text-orange-500">
                 <FiCalendar className="text-[10px]" />
-                <span className="text-[9px] font-black uppercase tracking-widest">Effective: {lastUpdated}</span>
+                <span className="text-[9px] font-black uppercase tracking-widest">Effective: {policyData.effectiveDate}</span>
               </div>
             </div>
           </motion.div>
@@ -146,12 +336,12 @@ const PrivacyPageUi = () => {
                 <div className="p-4 bg-orange-50 text-orange-600 rounded-2xl"><FiEye size={24}/></div>
                 <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter italic">01. Data Collection</h2>
               </div>
-              <p className="text-slate-500 text-sm leading-relaxed mb-8">{legal.policySections.collection.intro}</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {legal.policySections.collection.checklist.map((item) => (
-                  <div key={item} className="flex items-center gap-3 p-5 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-orange-200 transition-colors">
-                    <FiCheckCircle className="text-orange-500" />
-                    <span className="text-[11px] font-black text-slate-900 uppercase tracking-tight">{item}</span>
+              <p className="text-slate-500 text-sm leading-relaxed mb-8">{sectionsData.collectionIntro}</p>
+              <div className="grid grid-cols-1 gap-4">
+                {sectionsData.collectionItems?.map((item: string, index: number) => (
+                  <div key={index} className="flex items-start gap-3 p-5 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-orange-200 transition-colors">
+                    <FiCheckCircle className="text-orange-500 mt-0.5 shrink-0" />
+                    <span className="text-sm text-slate-700">{item}</span>
                   </div>
                 ))}
               </div>
@@ -163,9 +353,21 @@ const PrivacyPageUi = () => {
                 <div className="p-4 bg-orange-50 rounded-2xl"><FiShield size={24}/></div>
                 <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter italic">02. Usage Policy</h2>
               </div>
-              <p className="text-slate-600 text-sm leading-relaxed bg-slate-50 p-6 rounded-2xl border-l-4 border-orange-500 shadow-sm">
-                {legal.policySections.usage.content}
-              </p>
+              <div className="text-slate-600 text-sm leading-relaxed bg-slate-50 p-6 rounded-2xl border-l-4 border-orange-500 shadow-sm">
+                <ul className="space-y-2">
+                  {sectionsData.usagePoints?.map((point: string, index: number) => (
+                    <li key={index} className="flex items-start gap-2">
+                      <span className="text-orange-500 font-bold">•</span>
+                      <span>{point}</span>
+                    </li>
+                  ))}
+                </ul>
+                {sectionsData.usageRecurringNote && (
+                  <p className="mt-4 pt-4 border-t border-slate-200 text-slate-500">
+                    {sectionsData.usageRecurringNote}
+                  </p>
+                )}
+              </div>
             </section>
 
             {/* 03. Payback */}
@@ -179,15 +381,32 @@ const PrivacyPageUi = () => {
                 <div className="flex items-start gap-5">
                   <FiCheckCircle className="text-orange-500 mt-1 shrink-0" size={24} />
                   <div>
-                    <h4 className="font-black text-[11px] uppercase tracking-widest text-orange-500 mb-2">100% Guarantee</h4>
-                    <p className="text-slate-300 text-sm leading-relaxed">{legal.policySections.payback.eligibility}</p>
+                    <h4 className="font-black text-[11px] uppercase tracking-widest text-orange-500 mb-2">{sectionsData.refundGuarantee}</h4>
+                    <ul className="text-slate-300 text-sm leading-relaxed space-y-2">
+                      {sectionsData.refundEligibilityPoints?.map((point: string, index: number) => (
+                        <li key={index} className="flex items-start gap-2">
+                          <span className="text-orange-500">•</span>
+                          <span>{point}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {sectionsData.refundClaimNote && (
+                      <p className="mt-3 text-slate-400 text-sm">{sectionsData.refundClaimNote}</p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-start gap-5">
                   <FiClock className="text-orange-500 mt-1 shrink-0" size={24} />
                   <div>
                     <h4 className="font-black text-[11px] uppercase tracking-widest text-orange-500 mb-2">Processing Time</h4>
-                    <p className="text-slate-300 text-sm leading-relaxed">{legal.policySections.payback.timeline}</p>
+                    <ul className="text-slate-300 text-sm leading-relaxed space-y-2">
+                      {sectionsData.refundTimelinePoints?.map((point: string, index: number) => (
+                        <li key={index} className="flex items-start gap-2">
+                          <span className="text-orange-500">•</span>
+                          <span>{point}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
               </div>
@@ -199,11 +418,17 @@ const PrivacyPageUi = () => {
                 <div className="p-4 bg-orange-50 rounded-2xl"><FiLock size={24}/></div>
                 <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter italic">04. Security Standards</h2>
               </div>
-              <div className="p-8 bg-orange-600/5 border border-orange-500/20 rounded-3xl flex items-start gap-5">
-                <FiInfo className="text-orange-600 mt-1 shrink-0" size={24} />
-                <p className="text-slate-900 text-xs font-black leading-relaxed uppercase tracking-tight">
-                  {legal.policySections.security.content}
-                </p>
+              <div className="p-8 bg-orange-600/5 border border-orange-500/20 rounded-3xl">
+                <p className="text-slate-900 text-sm leading-relaxed mb-4">{sectionsData.securityIntro}</p>
+                <ul className="space-y-2 mb-4">
+                  {sectionsData.securityPoints?.map((point: string, index: number) => (
+                    <li key={index} className="flex items-start gap-2 text-sm text-slate-700">
+                      <span className="text-orange-500 font-bold">•</span>
+                      <span>{point}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-sm text-slate-600 italic">{sectionsData.securityCompliance}</p>
               </div>
             </section>
 
@@ -214,20 +439,108 @@ const PrivacyPageUi = () => {
                 <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter italic">05. Data Rights & Deletion</h2>
               </div>
               <div className="space-y-6">
-                <p className="text-slate-600 text-sm leading-relaxed">
-                  {legal.policySections.deletion.content}
-                </p>
+                <p className="text-slate-600 text-sm leading-relaxed">{sectionsData.deletionIntro}</p>
+                <ul className="space-y-2">
+                  {sectionsData.deletionIncludes?.map((item: string, index: number) => (
+                    <li key={index} className="flex items-start gap-2 text-sm text-slate-700">
+                      <FiCheckCircle className="text-red-500 mt-1 shrink-0" size={14} />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
                 <div className="p-6 bg-zinc-900 rounded-3xl border border-white/10 text-center">
                   <p className="text-zinc-400 text-[10px] font-black uppercase tracking-widest mb-4">
                     Looking to remove your account?
                   </p>
                   <p className="text-white text-xs font-bold leading-relaxed mb-4">
-                    The direct link to manage and delete your personal data is located at the <span className="text-orange-500">footer of this website</span> under the "Active Section". Note you must be signed in with email & password to proceed
+                    {sectionsData.deletionInstruction}
                   </p>
+                  {sectionsData.deletionNote && (
+                    <p className="text-zinc-400 text-xs">{sectionsData.deletionNote}</p>
+                  )}
                 </div>
               </div>
             </section>
 
+            {/* 06. Service-Specific Policies */}
+            <section id="serviceSpecific" className="scroll-mt-32">
+              <div className="flex items-center gap-4 mb-8 text-purple-600">
+                <div className="p-4 bg-purple-50 rounded-2xl"><FiPackage size={24}/></div>
+                <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter italic">06. Service-Specific Policies</h2>
+              </div>
+              
+              <div className="grid gap-6">
+                {/* Cleaning Services */}
+                {sectionsData.cleaningPolicyPoints?.length > 0 && (
+                  <div className="border-l-4 border-blue-400 pl-4 py-2">
+                    <h3 className="font-bold text-lg mb-3 flex items-center gap-2"><FiHome className="text-blue-600" /> Cleaning Services</h3>
+                    <ul className="space-y-2">
+                      {sectionsData.cleaningPolicyPoints.map((item: string, index: number) => (
+                        <li key={index} className="flex items-start gap-3 text-sm text-slate-600">
+                          <FiCheckCircle className="text-blue-500 mt-1 shrink-0" size={14} />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Decoration Services */}
+                {sectionsData.decorationPolicyPoints?.length > 0 && (
+                  <div className="border-l-4 border-purple-400 pl-4 py-2">
+                    <h3 className="font-bold text-lg mb-3 flex items-center gap-2"><FiInfo className="text-purple-600" /> Decoration Services</h3>
+                    <ul className="space-y-2">
+                      {sectionsData.decorationPolicyPoints.map((item: string, index: number) => (
+                        <li key={index} className="flex items-start gap-3 text-sm text-slate-600">
+                          <FiCheckCircle className="text-purple-500 mt-1 shrink-0" size={14} />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Health Services */}
+                {sectionsData.healthPolicyPoints?.length > 0 && (
+                  <div className="border-l-4 border-green-400 pl-4 py-2">
+                    <h3 className="font-bold text-lg mb-3 flex items-center gap-2"><FiHeart className="text-green-600" /> Health Services</h3>
+                    <ul className="space-y-2">
+                      {sectionsData.healthPolicyPoints.map((item: string, index: number) => (
+                        <li key={index} className="flex items-start gap-3 text-sm text-slate-600">
+                          <FiCheckCircle className="text-green-500 mt-1 shrink-0" size={14} />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Renting Services */}
+                {sectionsData.rentalPolicyPoints?.length > 0 && (
+                  <div className="border-l-4 border-orange-400 pl-4 py-2">
+                    <h3 className="font-bold text-lg mb-3 flex items-center gap-2"><FiPackage className="text-orange-600" /> Renting Services</h3>
+                    <ul className="space-y-2">
+                      {sectionsData.rentalPolicyPoints.map((item: string, index: number) => (
+                        <li key={index} className="flex items-start gap-3 text-sm text-slate-600">
+                          <FiCheckCircle className="text-orange-500 mt-1 shrink-0" size={14} />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-8 p-6 bg-slate-50 rounded-2xl border border-slate-200">
+                <p className="text-sm text-slate-600">
+                  <span className="font-bold">For questions about your data or our policies, contact:</span><br />
+                  {policyData.footerEmail} | {policyData.footerAddress}
+                </p>
+                <p className="text-xs text-slate-400 mt-4">
+                  {policyData.footerNote}
+                </p>
+              </div>
+            </section>
           </div>
         </div>
       </div>

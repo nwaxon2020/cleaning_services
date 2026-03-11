@@ -3,94 +3,62 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { db } from '@/lib/firebase';
+import { 
+  collection, doc, query, orderBy, onSnapshot 
+} from 'firebase/firestore';
 import { 
   FaUsers, FaAward, 
   FaRocket, FaStar, FaEnvelope, 
   FaPhoneAlt, FaMapMarkerAlt, FaLinkedin, FaTwitter
 } from 'react-icons/fa';
 
-// --- DATA OBJECT WITH IMAGES, TITLES, AND QUOTES ---
-const HERO_DATA = [
-  {
-    url: "https://static.vecteezy.com/system/resources/thumbnails/069/923/000/small/professional-african-american-man-cleaning-office-desk-with-cloth-and-cleaning-supplies-photo.jpeg",
-    title: "OUR <span class='text-orange-500 italic'>LEGACY</span>",
-    quote: "Precision in every corner, excellence in every touch."
-  },
-  {
-    url: "https://maidinparadiseflorida.com/wp-content/uploads/2024/02/cheerful-black-lady-holding-bucket-of-cleaning-sup-2023-11-27-05-24-08-utc1.png",
-    title: "OUR <span class='text-orange-500 italic'>QUALITY</span>",
-    quote: "Dedicated to restoring the sparkle in your sanctuary."
-  },
-  {
-    url: "https://img.freepik.com/free-photo/professional-cleaning-service-person-using-vacuum-cleaner-office_23-2150520631.jpg",
-    title: "OUR <span class='text-orange-500 italic'>STANDARDS</span>",
-    quote: "Hospital-grade sanitization for your peace of mind."
-  },
-  {
-    url: "https://thecleaningladies.ca/media/images/action-shot3.jpg?width=768&height=550&loading=eager",
-    title: "OUR <span class='text-orange-500 italic'>PROMISE</span>",
-    quote: "More than just a clean space—it's a fresh start."
-  }
-];
-
 export default function AboutUi() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const router = useRouter();
 
+  // --- FIREBASE STATES ---
+  const [heroSlides, setHeroSlides] = useState<any[]>([]);
+  const [timeline, setTimeline] = useState<any[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
+  const [settings, setSettings] = useState<any>({});
+  const [contact, setContact] = useState<any>({}); // Added contact state
+
+  // --- DATA FETCHING ---
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % HERO_DATA.length);
-    }, 5000);
-    return () => clearInterval(timer);
+    const unsubSlides = onSnapshot(query(collection(db, "about_hero_slides"), orderBy("order", "asc")), (snap) => {
+      setHeroSlides(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    const unsubTimeline = onSnapshot(query(collection(db, "about_timeline"), orderBy("year", "asc")), (snap) => {
+      setTimeline(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    const unsubStaff = onSnapshot(query(collection(db, "about_staff"), orderBy("createdAt", "desc")), (snap) => {
+      setStaff(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    const unsubSettings = onSnapshot(doc(db, "settings", "about_mission"), (snap) => {
+      if (snap.exists()) setSettings(snap.data());
+    });
+    // Fetching the contact_info for the footer section
+    const unsubContact = onSnapshot(doc(db, "settings", "contact_info"), (snap) => {
+      if (snap.exists()) setContact(snap.data());
+    });
+    
+    return () => { 
+      unsubSlides(); unsubTimeline(); unsubStaff(); unsubSettings(); unsubContact(); 
+    };
   }, []);
 
-  const timeline = [
-    {
-      year: '2018',
-      title: 'The Spark',
-      desc: 'Founded by Sarah Johnson as a one-woman operation in the heart of Bristol, UK.',
-      icon: <FaRocket />
-    },
-    {
-      year: '2020',
-      title: 'Resilience & Growth',
-      desc: 'Expanded our team to 10+ professionals and introduced eco-friendly cleaning standards.',
-      icon: <FaUsers />
-    },
-    {
-      year: '2023',
-      title: 'Excellence Award',
-      desc: 'Voted the #1 Local Cleaning Service for quality and customer satisfaction.',
-      icon: <FaAward />
-    },
-    {
-      year: '2026',
-      title: 'Modern Innovation',
-      desc: 'Launched our digital booking platform to serve our community with 24/7 convenience.',
-      icon: <FaStar />
+  useEffect(() => {
+    if (heroSlides.length > 0) {
+      const timer = setInterval(() => {
+        setCurrentIndex((prev) => (prev + 1) % heroSlides.length);
+      }, 5000);
+      return () => clearInterval(timer);
     }
-  ];
+  }, [heroSlides]);
 
-  const staff = [
-    {
-      name: 'Sarah Johnson',
-      role: 'HR',
-      bio: 'With over 10 years of experience, Sarah leads with a passion for excellence.',
-      image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ91IiT4f7trpTWOxjgtVsS6pcWtBX3bwiP6g&s'
-    },
-    {
-      name: 'Mike Thompson',
-      role: 'Operations Manager',
-      bio: 'Mike ensures every cleaning job meets our strict hospital-grade standards.',
-      image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=500&q=80'
-    },
-    {
-      name: 'Emma Wilson',
-      role: 'Customer Relations',
-      bio: 'Emma is dedicated to providing the best support and service to our clients.',
-      image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=500&q=80'
-    }
-  ];
+  // Fallback while loading
+  if (!settings.hero && heroSlides.length === 0) return null;
 
   return (
     <div className="min-h-screen bg-white text-slate-900 pt-16 md:pt-20 pb-20 overflow-hidden">
@@ -107,11 +75,13 @@ export default function AboutUi() {
             className="absolute inset-0 z-0"
           >
             <div className="absolute inset-0 bg-black/60 z-10" />
-            <img 
-              src={HERO_DATA[currentIndex].url} 
-              className="w-full h-full object-cover" 
-              alt="Cleaning Excellence" 
-            />
+            {heroSlides.length > 0 && (
+              <img 
+                src={heroSlides[currentIndex].url} 
+                className="w-full h-full object-cover" 
+                alt="Hero Background" 
+              />
+            )}
           </motion.div>
         </AnimatePresence>
 
@@ -124,34 +94,36 @@ export default function AboutUi() {
             EST. 2018
           </motion.span>
 
-          {/* --- SLIDING DYNAMIC TITLE --- */}
           <div className="overflow-hidden mb-4">
             <AnimatePresence mode="wait">
-              <motion.h1 
-                key={currentIndex}
-                initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -40 }}
-                transition={{ duration: 0.6, ease: "easeOut" }}
-                className="text-5xl md:text-7xl font-black tracking-tighter text-white uppercase"
-                dangerouslySetInnerHTML={{ __html: HERO_DATA[currentIndex].title }}
-              />
+              {heroSlides.length > 0 && (
+                <motion.h1 
+                  key={currentIndex}
+                  initial={{ opacity: 0, y: 40 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -40 }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                  className="text-5xl md:text-7xl font-black tracking-tighter text-white uppercase"
+                  dangerouslySetInnerHTML={{ __html: heroSlides[currentIndex].title }}
+                />
+              )}
             </AnimatePresence>
           </div>
           
-          {/* --- SLIDING DYNAMIC QUOTE --- */}
           <div className="h-10">
              <AnimatePresence mode="wait">
-                <motion.p 
-                  key={currentIndex}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.8 }}
-                  className="text-white/90 max-w-xl mx-auto font-medium uppercase tracking-[0.1em] text-[12px] italic"
-                >
-                  "{HERO_DATA[currentIndex].quote}"
-                </motion.p>
+                {heroSlides.length > 0 && (
+                  <motion.p 
+                    key={currentIndex}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.8 }}
+                    className="text-white/90 max-w-xl mx-auto font-medium uppercase tracking-[0.1em] text-[12px] italic"
+                  >
+                    "{heroSlides[currentIndex].quote}"
+                  </motion.p>
+                )}
              </AnimatePresence>
           </div>
 
@@ -162,14 +134,14 @@ export default function AboutUi() {
       </section>
 
       {/* --- HERO TEXT SECTION --- */}
-      <section className="relative px-6 py-8 md:py-20 bg-slate-50">
+      <section className="relative px-6 py-8 md:py-10 bg-slate-50">
         <div className="max-w-6xl mx-auto relative z-10 text-center">
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-3xl md:text-7xl font-black tracking-tighter mb-3 text-slate-900"
+            className="text-2xl md:text-6xl font-black tracking-tighter mb-3 text-slate-900 uppercase"
           >
-            RESTORING <span className="text-orange-600 italic">COMFORT</span>
+            RESTORING <span className="text-orange-600 italic">{settings.hero || "COMFORT"}</span>
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0 }}
@@ -177,7 +149,7 @@ export default function AboutUi() {
             transition={{ delay: 0.2 }}
             className="max-w-2xl mx-auto text-slate-600 text-lg md:text-xl leading-relaxed"
           >
-            We don't just scrub floors; we restore comfort. BristolClean is built on the belief that a spotless space is the foundation of a healthy life.
+            {settings.subtitle}
           </motion.p>
         </div>
       </section>
@@ -185,7 +157,7 @@ export default function AboutUi() {
       {/* --- TIMELINE SECTION --- */}
       <section className="py-10 md:py-24 px-6 border-b border-slate-100">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-black uppercase tracking-tighter mb-16 text-center text-slate-900">Our Journey</h2>
+          <h2 className="text-3xl font-black uppercase tracking-tighter mb-16 text-center text-blue-900">Our Journey</h2>
           <div className="relative border-l-2 border-slate-100 ml-4 md:ml-0 md:flex md:border-l-0 md:border-t-2 md:justify-between">
             {timeline.map((item, index) => (
               <motion.div 
@@ -199,7 +171,7 @@ export default function AboutUi() {
                 <div className="absolute -left-[9px] top-0 md:-top-[9px] md:left-0 w-4 h-4 rounded-full bg-orange-600 ring-4 ring-white" />
                 <span className="text-orange-600 font-black text-2xl mb-2 block">{item.year}</span>
                 <h3 className="text-slate-900 font-bold text-lg mb-2">{item.title}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed pr-4">{item.desc}</p>
+                <p className="text-blue-700 text-sm leading-relaxed pr-4">{item.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -207,7 +179,7 @@ export default function AboutUi() {
       </section>
 
       {/* --- CEO SPOTLIGHT --- */}
-      <section className="py-24 px-6 bg-slate-50/50">
+      <section className="py-24 px-4 md:px-6 bg-slate-50/50">
         <div className="max-w-6xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <motion.div 
@@ -216,35 +188,39 @@ export default function AboutUi() {
                viewport={{ once: true }}
                className="relative"
             >
-              <div className="absolute -inset-4 border-2 border-orange-100 rounded-3xl" />
+              <div className="absolute border-2 border-orange-100 rounded-3xl" />
               <img 
-                src="https://www.shutterstock.com/image-photo/portrait-black-woman-entrepreneur-smile-260nw-2729517329.jpg" 
-                alt="Sarah Johnson" 
+                src={settings.ceoImageUrl} 
+                alt={settings.ceoName} 
                 className="w-full h-[500px] object-cover rounded-2xl shadow-2xl shadow-slate-200"
               />
-              <div className="absolute bottom-6 left-6 right-6 bg-white/95 backdrop-blur-md p-6 rounded-xl shadow-xl border border-slate-100">
-                 <p className="text-slate-700 italic text-sm mb-4">"Our goal was never to be the biggest, just the most trusted. We treat every home like it's our own."</p>
-                 <p className="text-orange-600 font-black text-xs uppercase tracking-widest">Sarah Johnson — Founder</p>
+              <div className="absolute bottom-2 left-3 md:left-6 right-3 md:right-6 bg-white/95 backdrop-blur-md p-3 md:p-4 rounded-md md:rounded-xl shadow-xl border border-slate-100">
+                 <p className="text-slate-700 italic text-sm mb-2">"{settings.motto}"</p>
+                 <p className="text-orange-600 font-black text-xs uppercase tracking-widest">{settings.ceoName} — Founder</p>
+                 <div className="mt-2 text-[10px] text-slate-500 font-bold tracking-tight">
+                    <p className='font-black'>Tel: <a href={`tel:${settings.ceoPhone}`} className='text-blue-600 font-medium hover:underline'>{settings.ceoPhone}</a></p>
+                    <p className="lowercase font-black">Email: <a href={`mailto@:${settings.ceoEmail}`} className='text-blue-600 font-medium hover:underline'>{settings.ceoEmail}</a></p>
+                 </div>
               </div>
             </motion.div>
 
             <div className="space-y-8">
               <h2 className="text-4xl font-black uppercase tracking-tighter text-slate-900">Letter from the <span className="text-orange-600">CEO</span></h2>
               <div className="w-20 h-1.5 bg-orange-600 rounded-full" />
-              <p className="text-slate-600 leading-relaxed text-lg">
-                When I started BristolClean in 2018, I had one mop, a bucket, and a deep-seated passion for helping my neighbors. I saw how much stress a messy home could add to an already busy life. 
+              <p className="text-slate-600 leading-relaxed text-lg italic">
+                {settings.vision}
               </p>
               <p className="text-slate-600 leading-relaxed">
-                Today, our team has grown, but that core philosophy remains. We've served over 500+ families in Bristol, UK, ensuring that quality and reliability are never compromised. 
+                {settings.mission}
               </p>
               
               <div className="grid grid-cols-2 gap-6 pt-6">
                 <div className="p-6 bg-white shadow-sm rounded-2xl border border-slate-100">
-                  <h4 className="text-orange-600 text-3xl font-black mb-1">500+</h4>
+                  <h4 className="text-orange-600 text-3xl font-black mb-1">{settings.experience}</h4>
                   <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Active Clients</p>
                 </div>
                 <div className="p-6 bg-white shadow-sm rounded-2xl border border-slate-100">
-                  <h4 className="text-orange-600 text-3xl font-black mb-1">100%</h4>
+                  <h4 className="text-orange-600 text-3xl font-black mb-1">{settings.clientsCount}</h4>
                   <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Satisfaction</p>
                 </div>
               </div>
@@ -258,7 +234,7 @@ export default function AboutUi() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-black uppercase tracking-tighter text-slate-900">Our Professional Staff</h2>
-            <p className="text-slate-500 mt-2 font-medium">The experts behind the sparkle</p>
+            <p className="text-slate-500 mt-2 font-medium">The experts behind your smile</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {staff.map((member, i) => (
@@ -303,32 +279,32 @@ export default function AboutUi() {
           >
             <h2 className="text-4xl font-black uppercase tracking-tighter mb-8 text-slate-900">Our Unwavering <span className="text-orange-600 italic">Mission</span></h2>
             <p className="text-lg text-slate-700 leading-relaxed mb-6 font-medium">
-              At BristolClean, our mission extends far beyond simply removing dust and grime. We are committed to redefining the standard of domestic and commercial care across Lincolnshire. 
+              At Isundunrin, our mission extends far beyond simply removing dust and grime. We are committed to redefining the standard of care across cleaning, decoration, health services, and event rentals.
             </p>
             <p className="text-slate-500 leading-relaxed italic border-l-4 border-orange-500 pl-6 text-left max-w-2xl mx-auto">
-              "We believe that every environment we touch should be a sanctuary. By combining rigorous hospital-grade sanitization with the warmth of a local, family-owned touch, we ensure that your space isn't just clean—it's BristolClean."
+              "{settings.values}"
             </p>
           </motion.div>
         </div>
       </section>
 
-      {/* --- CONTACT & INFO --- */}
+      {/* --- CONTACT & INFO SECTION (POPULATED) --- */}
       <section className="py-20 px-6 bg-slate-900">
         <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-8">
-            <a href="mailto:hello@Bristolclean.co.uk" className="flex flex-col items-center text-center p-8 bg-white/5 rounded-3xl border border-white/5 hover:border-orange-500/30 transition-all group">
+            <a href={`mailto:${contact.generalEmail}`} className="flex flex-col items-center text-center p-8 bg-white/5 rounded-3xl border border-white/5 hover:border-orange-500/30 transition-all group">
                 <div className="w-14 h-14 bg-orange-600 text-white rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <FaEnvelope size={24} />
                 </div>
                 <h4 className="font-bold text-white text-lg mb-2">Email Us</h4>
-                <p className="text-slate-400 text-sm italic">hello@Bristolclean.co.uk</p>
+                <p className="text-slate-400 text-sm italic">{contact.generalEmail}</p>
             </a>
 
-            <a href="tel:+441234567890" className="flex flex-col items-center text-center p-8 bg-white/5 rounded-3xl border border-white/5 hover:border-orange-500/30 transition-all group">
+            <a href={`tel:${contact.generalPhone}`} className="flex flex-col items-center text-center p-8 bg-white/5 rounded-3xl border border-white/5 hover:border-orange-500/30 transition-all group">
                 <div className="w-14 h-14 bg-orange-600 text-white rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <FaPhoneAlt size={24} />
                 </div>
                 <h4 className="font-bold text-white text-lg mb-2">Call Support</h4>
-                <p className="text-slate-400 text-sm italic">+44 1234 567890</p>
+                <p className="text-slate-400 text-sm italic">{contact.generalPhone}</p>
             </a>
 
             <button onClick={() => router.push('/location')} className="flex flex-col items-center text-center p-8 bg-white/5 rounded-3xl border border-white/5 hover:border-orange-500/30 transition-all group">
@@ -336,25 +312,25 @@ export default function AboutUi() {
                   <FaMapMarkerAlt size={24} />
                 </div>
                 <h4 className="font-bold text-white text-lg mb-2">Our Office</h4>
-                <p className="text-slate-400 text-sm italic">Market Place, Bristol PE21</p>
+                <p className="text-slate-400 text-sm italic">Market Place, {contact.officeCity} {contact.officePostcode}</p>
             </button>
         </div>
       </section>
 
-      {/* --- RESTORED CTA (ORIGINAL DARK/GLOW STYLE) --- */}
-      <section className="py-24 px-6 bg-white">
+      {/* --- RESTORED CTA --- */}
+      <section className="py-24 px-2 md:px-6 bg-white">
         <div className="max-w-5xl mx-auto bg-orange-500 rounded-[2.5rem] p-12 md:p-20 text-center relative overflow-hidden shadow-2xl">
            <div className="absolute top-0 right-0 w-96 h-96 bg-orange-600/20 blur-[120px] -mr-48 -mt-48" />
            <div className="absolute bottom-0 left-0 w-64 h-64 bg-orange-600/10 blur-[100px] -ml-32 -mb-32" />
            
-           <h2 className="text-3xl md:text-5xl font-black text-white mb-6 uppercase tracking-tighter relative z-10">
+           <h2 className="text-xl md:text-3xl md:text-5xl font-black text-white mb-6 uppercase tracking-tighter relative z-10">
              Ready for a <span className="text-black italic">Fresh</span> Start?
            </h2>
-           <p className="text-slate-200 mb-10 font-medium max-w-xl mx-auto relative z-10">
-             Join over 500+ satisfied clients in Bristol and experience the difference of professional care.
+           <p className="text-sm md:text-base text-slate-200 mb-10 font-medium max-w-xl mx-auto relative z-10">
+             Join over {settings.experience} satisfied clients and experience the difference of professional care.
            </p>
-           <button className="px-10 py-4 bg-black text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-gray-900 transition-all shadow-xl shadow-orange-600/40 relative z-10">
-             Book Your Clean Now
+           <button className="text-sm md:text-base px-10 py-4 bg-black text-white rounded-lg md:rounded-xl font-black uppercase tracking-widest text-xs hover:bg-gray-900 transition-all shadow-xl shadow-orange-600/40 relative z-10">
+             Book Your Services Now
            </button>
         </div>
       </section>

@@ -10,7 +10,7 @@ import { collection, addDoc, query, getDocs, orderBy, limit, serverTimestamp, de
 import toast from "react-hot-toast";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import Link from "next/dist/client/link";
+import Link from "next/link";
 
 // --- CONSTANTS ---
 const SECTION_BG_IMAGE = "/bg_review.jpg";
@@ -25,6 +25,37 @@ interface Review {
   createdAt: any;
   isMock?: boolean;
 }
+
+// MOCK REVIEWS FOR SNAPSHOT LOADING
+const MOCK_REVIEWS: Review[] = [
+  {
+    id: "mock-1",
+    userName: "Sarah Jenkins",
+    rating: 5,
+    comment: "The best cleaning service in Boston. My office has never looked this sharp.",
+    createdAt: new Date(),
+    isMock: true,
+    userPhoto: "https://i.pravatar.cc/150?u=sarah"
+  },
+  {
+    id: "mock-2",
+    userName: "David Thompson",
+    rating: 5,
+    comment: "Fast, reliable, and professional. The team arrived exactly on time. Highly recommended.",
+    createdAt: new Date(),
+    isMock: true,
+    userPhoto: "https://i.pravatar.cc/150?u=david"
+  },
+  {
+    id: "mock-3",
+    userName: "Emma Watson",
+    rating: 5,
+    comment: "Absolutely fantastic service. My home has never been cleaner!",
+    createdAt: new Date(),
+    isMock: true,
+    userPhoto: "https://i.pravatar.cc/150?u=emma"
+  }
+];
 
 // --- SUB-COMPONENTS (MEMOIZED TO PREVENT LAG) ---
 
@@ -75,7 +106,7 @@ const ReviewCard = React.memo(({ rev, isCurrentUser }: { rev: Review, isCurrentU
 ReviewCard.displayName = "ReviewCard";
 
 const SmartReviewSection = () => {
-  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviews, setReviews] = useState<Review[]>(MOCK_REVIEWS); // Start with mock data immediately
   const [user, setUser] = useState<User | null>(null);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
@@ -89,15 +120,23 @@ const SmartReviewSection = () => {
     return () => unsub();
   }, []);
 
-  // 2. Data Fetching
+  // 2. Data Fetching with snapshot
   const loadData = useCallback(async () => {
     try {
       const q = query(collection(db, "reviews"), orderBy("createdAt", "desc"), limit(15));
       const snap = await getDocs(q);
       const fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as Review));
-      setReviews(fetched);
+      
+      // Only replace if we have real data, otherwise keep mocks
+      if (fetched.length > 0) {
+        setReviews(fetched);
+      } else {
+        setReviews(MOCK_REVIEWS);
+      }
     } catch (e) {
       console.error("Fetch error", e);
+      // Keep mocks on error
+      setReviews(MOCK_REVIEWS);
     }
   }, []);
 
