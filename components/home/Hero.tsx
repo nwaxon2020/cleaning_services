@@ -138,7 +138,7 @@ const Hero = () => {
               )}
             </div>
 
-            <div className="mt-8 md:mt-15 flex flex-col md:flex-row gap-4">
+            <div className="mt-1 md:mt-15 flex flex-col md:flex-row gap-4">
               <Link
                 href="/services"
                 className="text-center w-full md:w-auto bg-orange-600 text-white px-10 py-4 rounded-xl text-sm font-black uppercase tracking-widest hover:bg-orange-700 transition-all transform hover:scale-105 shadow-xl shadow-orange-600/20"
