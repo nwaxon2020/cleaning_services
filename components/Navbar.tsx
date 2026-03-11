@@ -24,6 +24,8 @@ const Navbar = () => {
   const [subscribing, setSubscribing] = useState(false);
   
   const [siteData, setSiteData] = useState<any>(null);
+  // New state for contact information
+  const [contactData, setContactData] = useState<any>(null);
 
   const pathname = usePathname();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -39,7 +41,7 @@ const Navbar = () => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
 
-    // REAL-TIME SITE SETTINGS LISTENER - Added error handling for public access
+    // REAL-TIME SITE SETTINGS LISTENER
     const unsubSite = onSnapshot(doc(db, "settings", "site"), 
       (snap) => {
         if (snap.exists()) {
@@ -48,6 +50,18 @@ const Navbar = () => {
       },
       (err) => {
         if (err.code !== 'permission-denied') console.error("Site Settings Error:", err);
+      }
+    );
+
+    // NEW: REAL-TIME CONTACT INFO LISTENER
+    const unsubContact = onSnapshot(doc(db, "settings", "contact_info"), 
+      (snap) => {
+        if (snap.exists()) {
+          setContactData(snap.data());
+        }
+      },
+      (err) => {
+        if (err.code !== 'permission-denied') console.error("Contact Info Error:", err);
       }
     );
     
@@ -62,7 +76,6 @@ const Navbar = () => {
       if (currentUser?.email) {
         setUser(currentUser);
         
-        // Ensure listeners only fire if we have the correct UID and roles
         if (currentUser.uid === ADMIN_ID) {
           unsubscribeSnapshot = onSnapshot(collection(db, "chats"), 
             (snapshot) => {
@@ -71,7 +84,6 @@ const Navbar = () => {
               setUnreadCount(total);
             },
             (err) => {
-              // SILENCE permission errors in the console for non-admin users
               if (err.code !== 'permission-denied') console.error("Admin Chat Error:", err);
             }
           );
@@ -101,10 +113,12 @@ const Navbar = () => {
       document.removeEventListener("mousedown", handleClickOutside);
       unsubscribeAuth();
       unsubSite();
+      unsubContact(); // Clean up contact listener
       if (unsubscribeSnapshot) unsubscribeSnapshot();
     };
   }, [ADMIN_ID]);
 
+  // Rest of your logic (handleSubscribe, handleSignOut, handleImageChange) remains exactly the same
   const handleSubscribe = async () => {
     if (!user?.email) return;
     setSubscribing(true);
@@ -144,22 +158,17 @@ const Navbar = () => {
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-
     if (file.size > 5 * 1024 * 1024) {
       toast.error("Image too large (Max 5MB)");
       return;
     }
-
     setUploading(true);
     const storageRef = ref(storage, `profiles/${user.uid}/avatar`);
-    
     try {
       const metadata = { contentType: file.type };
       const snapshot = await uploadBytes(storageRef, file, metadata);
       const downloadURL = await getDownloadURL(snapshot.ref);
-      
       await updateProfile(user, { photoURL: downloadURL });
-      
       const userRef = doc(db, "users", user.uid);
       await setDoc(userRef, { 
         photoURL: downloadURL,
@@ -167,7 +176,6 @@ const Navbar = () => {
         displayName: user.displayName,
         lastUpdated: serverTimestamp()
       }, { merge: true }); 
-      
       toast.success("Avatar updated!");
       window.location.reload();
     } catch (error: any) {
@@ -191,11 +199,14 @@ const Navbar = () => {
   ];
 
   const isAboutActive = aboutLinks.some(link => link.href === pathname);
-
   const siteName = siteData?.siteName || "";
   const nameParts = siteName.split(" ");
   const firstWord = nameParts[0];
   const secondWord = nameParts.slice(1).join(" ");
+
+  // Global Contact Link Logic
+  const displayPhone = contactData?.generalPhone || "+44..000...";
+  const dialPhone = displayPhone.replace(/\s+/g, '');
 
   return (
     <nav className={`fixed left-0 right-0 z-[30] transition-all duration-500 ease-in-out ${scrolled ? "top-2 px-3" : "top-0 px-0"}`}>
@@ -230,12 +241,8 @@ const Navbar = () => {
               href={link.href}
               className={`relative px-4 py-2 text-sm uppercase tracking-widest font-semibold transition-colors duration-300 ${
                 pathname === link.href
-                  ? isWhitePage
-                    ? "text-orange-500 font-black" 
-                    : "text-white font-black" 
-                  : isWhitePage
-                    ? "text-slate-400 hover:text-orange-500" 
-                    : "text-gray-200 hover:text-white"
+                  ? isWhitePage ? "text-orange-500 font-black" : "text-white font-black" 
+                  : isWhitePage ? "text-slate-400 hover:text-orange-500" : "text-gray-200 hover:text-white"
               }`}
             >
               {link.name}
@@ -285,9 +292,10 @@ const Navbar = () => {
               <HiAdjustments size={20} />
             </Link>
           ): (
-            <Link href="tel:+447565123627" className={`hidden md:flex items-center gap-2 p-2 underline bg-black/90 rounded-lg text-gray-50 text-sm hover:bg-gray-900 transition-colors`}>
+            /* Updated Contact Number Section */
+            <Link href={`tel:${dialPhone}`} className={`hidden md:flex items-center gap-2 p-2 underline bg-black/90 rounded-lg text-gray-50 text-sm hover:bg-gray-900 transition-colors`}>
               <FaHeadset size={16} className="text-white" /> 
-              <span>+44 7565 12 3627</span>
+              <span>{displayPhone}</span>
             </Link>
           )}
 
@@ -305,6 +313,7 @@ const Navbar = () => {
               </Link>
             )}
 
+            {/* Profile Dropdown and Mobile Menu logic below remain identical to your original code */}
             <AnimatePresence>
               {isProfileOpen && user && (
                 <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="hidden md:block absolute top-[calc(100%+15px)] right-0 w-64 bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden p-3 z-[100]">
@@ -346,11 +355,11 @@ const Navbar = () => {
         </div>
       </div>
 
+      {/* Mobile Menu AnimatePresence remains exactly the same */}
       <AnimatePresence>
         {isOpen && (
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="absolute top-[calc(100%+8px)] left-0 right-0 md:hidden bg-zinc-900/95 backdrop-blur-2xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl z-[40] mx-2">
             <div className="p-4 flex flex-col gap-2">
-              
               {user && user.uid === ADMIN_ID && (
                 <Link href="/admin" onClick={() => setIsOpen(false)} className="flex items-center gap-3 text-orange-500 font-bold p-4 rounded-xl bg-orange-500/10">
                   <HiAdjustments size={22} /> Admin Dashboard
@@ -366,7 +375,6 @@ const Navbar = () => {
                   )}
                 </Link>
               ))}
-
               <div className="bg-zinc-800/50 rounded-xl overflow-hidden">
                 <p className="px-4 pt-2 text-[10px] font-black text-orange-500 uppercase tracking-[0.2em]">Company</p>
                 {aboutLinks.map((link) => (
@@ -375,13 +383,11 @@ const Navbar = () => {
                   </Link>
                 ))}
               </div>
-
               {user && (
                 <button onClick={handleSubscribe} className="flex items-center gap-3 text-black font-bold p-4 rounded-xl bg-white border border-orange-500/20">
                   <HiBell/> {subscribing ? "Subscribing..." : "Subscribe to News"}
                 </button>
               )}
-
               {user && (
                 <button onClick={handleSignOut} className="my-2 flex items-center gap-3 text-red-500 font-bold p-4 rounded-xl bg-red-500/10 active:bg-red-500 active:text-white transition-all">
                   <HiLogout size={22} /> Sign Out

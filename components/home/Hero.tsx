@@ -13,6 +13,8 @@ const Hero = () => {
   const [globalAttract, setGlobalAttract] = useState("");
   const [currentImage, setCurrentImage] = useState(0);
   const [loading, setLoading] = useState(true);
+  // State for dynamic phone number
+  const [contactData, setContactData] = useState<any>(null);
 
   // FETCH REAL-TIME DATA
   useEffect(() => {
@@ -33,9 +35,17 @@ const Hero = () => {
       }
     });
 
+    // 3. NEW: Fetch Global Contact Info (Phone Number)
+    const unsubContact = onSnapshot(doc(db, "settings", "contact_info"), (snap) => {
+      if (snap.exists()) {
+        setContactData(snap.data());
+      }
+    });
+
     return () => {
       unsubSlides();
       unsubAttract();
+      unsubContact();
     };
   }, []);
 
@@ -60,6 +70,10 @@ const Hero = () => {
 
   const activeSlide = slides[currentImage];
 
+  // Phone processing logic
+  const displayPhone = contactData?.generalPhone || "+44 0000 000 000";
+  const dialPhone = displayPhone.replace(/\s+/g, '');
+
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background with dynamic image rotation */}
@@ -82,21 +96,23 @@ const Hero = () => {
       </div>
 
       {/* Content */}
-      <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-25 md:py-33">
+      <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 pt-28 pb-20 md:py-33">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Left Column */}
           <motion.div
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
+            className="z-10"
           >
-            <Link href="tel:+447565123627" className="md:hidden mb-4 w-fit bg-black/50 backdrop-blur-md rounded-full text-[10px] flex items-center gap-2 px-4 py-2 border border-white/10 font-bold text-gray-50 hover:bg-gray-900 transition-all">
+            {/* Updated Mobile Phone Link */}
+            <Link href={`tel:${dialPhone}`} className="md:hidden mb-6 w-fit bg-black/50 backdrop-blur-md rounded-full text-[10px] flex items-center gap-2 px-4 py-2 border border-white/10 font-bold text-gray-50 hover:bg-gray-900 transition-all">
               <FaHeadset className="text-orange-500" /> 
-              <span>+44 7565 12 3627</span>
+              <span>{displayPhone}</span>
             </Link>
 
             {/* FIXED HEIGHT CONTAINER TO PREVENT SHAKING */}
-            <div className="mb-2 h-[120px] md:h-[180px] lg:h-[200px] flex items-center">
+            <div className="mb-2 h-auto min-h-[120px] md:min-h-[180px] lg:min-h-[200px] flex items-center">
               <AnimatePresence mode="wait">
                 <motion.h1 
                   key={currentImage}
@@ -114,15 +130,15 @@ const Hero = () => {
             </div>
             
             {/* GLOBAL ATTRACT TEXT */}
-            <div className="h-20 md:h-16 flex items-start"> {/* Small reserved height for attract text too */}
+            <div className="h-auto md:h-16 flex items-start mt-4">
               {globalAttract && (
-                <p className="text-lg text-gray-300 mb-8 max-w-lg leading-relaxed font-medium">
+                <p className="text-base md:text-lg text-gray-300 mb-8 max-w-lg leading-relaxed font-medium">
                   {globalAttract}
                 </p>
               )}
             </div>
 
-            <div className="mt-15 flex flex-col md:flex-row gap-4">
+            <div className="mt-8 md:mt-15 flex flex-col md:flex-row gap-4">
               <Link
                 href="/services"
                 className="text-center w-full md:w-auto bg-orange-600 text-white px-10 py-4 rounded-xl text-sm font-black uppercase tracking-widest hover:bg-orange-700 transition-all transform hover:scale-105 shadow-xl shadow-orange-600/20"
@@ -138,7 +154,7 @@ const Hero = () => {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-6 mt-12 pt-8 border-t border-white/10">
+            <div className="grid grid-cols-3 gap-4 md:gap-6 mt-12 pt-8 border-t border-white/10">
               {[
                 { icon: FaMagic, value: '500+', label: 'Happy Clients' },
                 { icon: FaShieldAlt, value: '100%', label: 'Eco-Friendly' },
@@ -150,9 +166,9 @@ const Hero = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 + index * 0.1 }}
                 >
-                  <stat.icon className="text-2xl text-orange-500 mb-2" />
-                  <div className="text-lg font-black text-white">{stat.value}</div>
-                  <div className="text-[10px] uppercase font-bold tracking-widest text-gray-500">{stat.label}</div>
+                  <stat.icon className="text-xl md:text-2xl text-orange-500 mb-2" />
+                  <div className="text-base md:text-lg font-black text-white">{stat.value}</div>
+                  <div className="text-[8px] md:text-[10px] uppercase font-bold tracking-widest text-gray-500">{stat.label}</div>
                 </motion.div>
               ))}
             </div>
@@ -163,7 +179,7 @@ const Hero = () => {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="w-full max-w-[35rem] absolute top-34 right-8"
+            className="w-full max-w-[35rem] relative lg:absolute lg:top-34 lg:right-8 mt-10 lg:mt-0 z-20"
           >
             <QuickBooking />
           </motion.div>
@@ -171,7 +187,7 @@ const Hero = () => {
       </div>
 
       {/* Dynamic Slide Indicators */}
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+      <div className="absolute bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 flex gap-2 z-30">
         {slides.map((_, idx) => (
           <button 
             key={idx} 
