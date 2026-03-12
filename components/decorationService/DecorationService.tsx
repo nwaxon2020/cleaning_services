@@ -93,13 +93,13 @@ export default function DecorationServicesUi() {
 
   const [formData, setFormData] = useState({
     fullName: '', phone: '', email: '',
+    contactPreference: 'WhatsApp', // Logic added
     quantity: 1, bidAmount: 0, notes: '',
     date: '', time: ''
   });
 
   // --- DATA SYNC ---
   useEffect(() => {
-    // 1. Real-time Contact Info Listener
     const unsubContact = onSnapshot(doc(db, "settings", "contact_info"), (docSnap) => {
         if (docSnap.exists()) {
             const phone = docSnap.data().generalPhone;
@@ -107,7 +107,6 @@ export default function DecorationServicesUi() {
         }
     });
 
-    // 2. Setup Real-time content listeners
     const unsubHeader = onSnapshot(doc(db, "settings", "decoration_config"), (s) => s.exists() && setHeaderText(s.data().headerText));
     const unsubItems = onSnapshot(query(collection(db, "decoration_items"), orderBy("createdAt", "desc")), (s) => setItems(s.docs.map(d => ({id: d.id, ...d.data()}))));
     
@@ -218,56 +217,6 @@ export default function DecorationServicesUi() {
         </div>
       </div>
 
-      {/* MODAL: Booking Form */}
-      <AnimatePresence>
-        {selectedItem && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-2">
-            <motion.div initial={{ y: 20 }} animate={{ y: 0 }} className="bg-white w-full max-w-4xl h-[95vh] rounded-2xl overflow-hidden flex flex-col md:flex-row relative">
-              <button onClick={() => setSelectedItem(null)} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full z-10 hover:bg-red-500 hover:text-white transition-all"><FaTimes /></button>
-              
-              <div className="hidden md:block w-1/3 bg-slate-50 relative">
-                <img src={selectedItem.imageUrl} className="w-full h-full object-cover" alt="" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent p-6 flex flex-col justify-end text-white">
-                  <h4 className="font-black text-sm uppercase italic">{selectedItem.name}</h4>
-                  <p className="text-[10px] font-bold opacity-70">Limit: £{selectedItem.priceRange}</p>
-                </div>
-              </div>
-
-              <div className="flex-1 p-6 md:p-10 overflow-y-auto custom-scrollbar flex flex-col">
-                <h3 className="text-xl font-black uppercase italic mb-6">Service <span className="text-purple-600">Quote</span></h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
-                  <div className="space-y-3">
-                    <input type="text" value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} placeholder="Full Name" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-purple-600" />
-                    <input type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="Phone Number" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none" />
-                    <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="Email" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none" />
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex gap-2">
-                        <input type="number" value={formData.quantity} onChange={e => setFormData({...formData, quantity: Number(e.target.value)})} placeholder="Rooms/m²" className="w-1/2 p-3 bg-slate-50 border rounded-lg text-xs font-bold" />
-                        <input type="number" value={formData.bidAmount} onChange={e => setFormData({...formData, bidAmount: Number(e.target.value)})} placeholder="Offer £" className="w-1/2 p-3 bg-purple-50 border-purple-200 border rounded-lg text-xs font-black text-purple-700" />
-                    </div>
-                    <div className="flex gap-2">
-                        <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-1/2 p-3 bg-slate-50 border rounded-lg text-[10px] font-bold" />
-                        <select value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className="w-1/2 p-3 bg-slate-50 border rounded-lg text-[10px] font-bold outline-none">
-                            <option value="">Time Available</option>
-                            <option value="08:00">08:00</option>
-                            <option value="12:00">12:00</option>
-                            <option value="16:00">16:00</option>
-                            <option value="20:00">20:00</option>
-                        </select>
-                    </div>
-                    <textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} placeholder="Notes (Optional)" className="w-full p-3 bg-slate-50 border rounded-lg text-xs h-20" />
-                  </div>
-                </div>
-                <button onClick={handleGetQuote} disabled={isSubmitting} className="w-full mt-6 bg-slate-900 text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-purple-600">
-                  {isSubmitting ? <FaSpinner className="animate-spin" /> : 'Request Decoration Quote'}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* MODAL: Success & Passcode */}
       <AnimatePresence>
         {successOverlay && (
@@ -285,53 +234,109 @@ export default function DecorationServicesUi() {
         )}
       </AnimatePresence>
 
-      {/* MODAL: My Bookings & Edit Access */}
+      {/* MODAL: Booking Form */}
       <AnimatePresence>
-        {showCheckBooking && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[150] bg-slate-900/90 flex items-center justify-center p-2">
-            <div className="bg-white w-full max-w-4xl h-[98vh] rounded-2xl p-6 md:p-10 flex flex-col relative overflow-hidden">
-              <button onClick={() => { setShowCheckBooking(false); setViewableBookings(null); setEditingBooking(null); }} className="absolute top-6 right-6 text-slate-400"><FaTimes size={20} /></button>
+        {selectedItem && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-2">
+            <motion.div initial={{ y: 20 }} animate={{ y: 0 }} className="bg-white w-full max-w-4xl h-[95vh] rounded-2xl overflow-hidden flex flex-col md:flex-row relative">
+              <button onClick={() => setSelectedItem(null)} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full z-10 hover:bg-red-500 hover:text-white transition-all"><FaTimes /></button>
               
-              {!viewableBookings ? (
-                <div className="flex-1 flex flex-col items-center justify-center max-w-xs mx-auto text-center">
-                  <FaLock className="text-slate-200 text-4xl mb-4" />
-                  <h2 className="text-2xl font-black uppercase italic mb-6">Booking Access</h2>
-                  <input maxLength={4} value={passcodeInput} onChange={e => setPasscodeInput(e.target.value)} placeholder="Passcode" className="w-full text-center text-4xl font-black tracking-[0.4em] p-4 bg-slate-50 border rounded-xl mb-4 outline-none" />
-                  <button onClick={checkPasscode} className="w-full bg-slate-900 text-white py-4 rounded-xl font-black uppercase text-[10px]">Verify</button>
-                  <button onClick={handleForgotPasscode} className="mt-4 text-[9px] font-bold text-slate-400 hover:text-purple-600 underline uppercase">Forgot Code?</button>
+              <div className="hidden md:block w-1/3 bg-slate-50 relative">
+                <img src={selectedItem.imageUrl} className="w-full h-full object-cover" alt="" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent p-6 flex flex-col justify-end text-white">
+                  <h4 className="font-black text-sm uppercase italic">{selectedItem.name}</h4>
+                  <p className="text-[10px] font-bold opacity-70">Price Guide: £{selectedItem.priceRange} {selectedItem.pricePer}</p>
                 </div>
-              ) : (
-                <div className="flex-1 overflow-hidden flex flex-col">
-                  <h2 className="text-xl font-black uppercase italic mb-6">My Bookings</h2>
-                  <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
-                    {viewableBookings.map(b => (
-                      <div key={b.id} className="p-4 bg-slate-50 border rounded-xl">
-                        {editingBooking?.id === b.id ? (
-                           <div className="grid grid-cols-2 gap-3 p-2 bg-white rounded-lg border border-purple-200">
-                              <input value={editingBooking.phone} onChange={e => setEditingBooking({...editingBooking, phone: e.target.value})} placeholder="Phone" className="p-2 border rounded text-xs" />
-                              <input value={editingBooking.date} onChange={e => setEditingBooking({...editingBooking, date: e.target.value})} type="date" className="p-2 border rounded text-xs" />
-                              <input value={editingBooking.time} onChange={e => setEditingBooking({...editingBooking, time: e.target.value})} placeholder="Time" className="p-2 border rounded text-xs" />
-                              <textarea value={editingBooking.address} onChange={e => setEditingBooking({...editingBooking, address: e.target.value})} placeholder="Address" className="p-2 border rounded text-xs col-span-2" />
-                              <button onClick={handleUpdateBooking} className="col-span-2 bg-purple-600 text-white py-2 rounded-md font-black text-[10px] uppercase flex items-center justify-center gap-2"><FaCheck /> Update Details</button>
-                           </div>
-                        ) : (
-                          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 items-center">
-                            <div><p className="text-[7px] font-black uppercase text-slate-400">Service</p><p className="text-[10px] font-bold uppercase line-clamp-1">{b.serviceName}</p></div>
-                            <div><p className="text-[7px] font-black uppercase text-slate-400">Schedule</p><p className="text-[10px] font-bold">{b.date} / {b.time}</p></div>
-                            <div><p className="text-[7px] font-black uppercase text-slate-400">Status</p><p className="text-[10px] font-bold text-purple-600 uppercase">{b.status}</p></div>
-                            <div className="flex gap-2 md:col-span-2 justify-end">
-                              <button onClick={() => setEditingBooking(b)} className="p-2 bg-slate-200 rounded-md hover:text-purple-600 transition-colors"><FaEdit size={12} /></button>
-                              <button onClick={() => setDeleteConfirm(b)} className="p-2 bg-red-100 text-red-500 rounded-md hover:bg-red-500 hover:text-white transition-all"><FaTrash size={12} /></button>
-                            </div>
-                          </div>
-                        )}
+              </div>
+
+              <div className="flex-1 p-6 overflow-y-auto custom-scrollbar flex flex-col">
+                <h3 className="text-xl font-black uppercase italic mb-6">Service <span className="text-purple-600">Quote</span></h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
+                    {/* User Info */}
+                    <div className="space-y-4">
+                      <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Full Name</label>
+                          <input type="text" value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} placeholder="Enter name" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-purple-600" />
                       </div>
-                    ))}
-                  </div>
+                      <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400">WhatsApp / Phone</label>
+                          <input type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="080..." className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-purple-600" />
+                      </div>
+                      <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Email Address</label>
+                          <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="email@example.com" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-purple-600" />
+                      </div>
+                      {/* PREFERRED CONTACT METHOD - Logic added only */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase text-slate-400">Preferred Contact Method</label>
+                        <select 
+                          value={formData.contactPreference} 
+                          onChange={e => setFormData({...formData, contactPreference: e.target.value})} 
+                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none"
+                        >
+                          <option value="WhatsApp">WhatsApp</option>
+                          <option value="Phone Call">Phone Call</option>
+                          <option value="Email">Email</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Service Requirements */}
+                    <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-1/2 space-y-1">
+                        <label className="text-[10px] font-black uppercase text-purple-600">
+                            {selectedItem.pricePer?.toLowerCase().includes('m') ? "Total Sq Meters" : "Number of Rooms"}
+                        </label>
+                        <input type="number" min="1" value={formData.quantity} onChange={e => setFormData({...formData, quantity: Number(e.target.value)})} className="w-full p-3 bg-purple-50 border-purple-200 border-2 rounded-lg text-xs font-bold" />
+                        </div>
+                        
+                        <div className="w-1/2 space-y-1">
+                        <label className="text-[10px] font-black uppercase text-purple-600">Your Offer (£)</label>
+                        <input type="number" value={formData.bidAmount} onChange={e => setFormData({...formData, bidAmount: Number(e.target.value)})} placeholder="0.00" className="w-full p-3 bg-purple-50 border-purple-200 border-2 rounded-lg text-xs font-black text-purple-700 outline-none" />
+                        </div>
+                    </div>
+
+                    {/* Budget Helper Display */}
+                    <div className="p-3 bg-slate-900 rounded-xl text-white">
+                        <p className="text-center text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">Expected Budget Guide</p>
+                        <div className="flex flex-col justify-center items-center">
+                        <span className="text-xl font-black italic">
+                            £{(Number(selectedItem.priceRange.split('-')[0]) * (formData.quantity || 1)).toLocaleString()} 
+                            <span className="text-[10px] text-slate-400 not-italic ml-1"> - </span>
+                            £{(Number(selectedItem.priceRange.split('-')[1]) * (formData.quantity || 1)).toLocaleString()}
+                        </span>
+                        <span className="text-[9px] font-bold bg-purple-600 px-2 py-0.5 rounded uppercase">Based on {formData.quantity} units</span>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                        <div className="w-1/2 space-y-1">
+                        <label className="text-[10px] font-black uppercase text-slate-400">Preferred Date</label>
+                        <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full p-3 bg-slate-50 border rounded-lg text-[10px] font-bold" />
+                        </div>
+                        <div className="w-1/2 space-y-1">
+                        <label className="text-[10px] font-black uppercase text-slate-400">Preferred Time</label>
+                        <select value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className="w-full p-3 bg-slate-50 border rounded-lg text-[10px] font-bold outline-none">
+                            <option value="">Select Time</option>
+                            <option value="08:00">Morning (08:00)</option>
+                            <option value="12:00">Noon (12:00)</option>
+                            <option value="16:00">Afternoon (16:00)</option>
+                            <option value="20:00">Evening (20:00)</option>
+                        </select>
+                        </div>
+                    </div>
+                    <textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} placeholder="Additional details (e.g. wall type, specific colors...)" className="w-full p-3 bg-slate-50 border rounded-lg text-xs h-20 resize-none" />
+                    </div>
                 </div>
-              )}
-            </div>
-          </motion.div>
+
+                <button onClick={handleGetQuote} disabled={isSubmitting} className="w-full mt-6 bg-slate-900 text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-purple-600 transition-colors shadow-xl">
+                    {isSubmitting ? <FaSpinner className="animate-spin" /> : 'Submit Professional Quote Request'}
+                </button>
+                </div>
+            </motion.div>
+            </motion.div>
         )}
       </AnimatePresence>
 
