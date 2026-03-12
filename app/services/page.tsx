@@ -1,6 +1,6 @@
-import ServicesUi from "@/ui/ServicesUi";
+import ServicesPageUi from "@/ui/ServicesUi";
 
 
 export default function Services() {
-    return <ServicesUi/>
+    return <ServicesPageUi/>
 }

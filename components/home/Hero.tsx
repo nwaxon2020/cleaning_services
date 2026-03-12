@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { FaMagic, FaShieldAlt, FaClock, FaHeadset } from 'react-icons/fa';
-import QuickBooking from "../booking/QuickBooking";
+import QuickBooking from "../bookings/QuickBooking";
 import { db } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, doc } from "firebase/firestore";
 

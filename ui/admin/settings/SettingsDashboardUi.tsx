@@ -10,20 +10,20 @@ import { motion } from 'framer-motion';
 
 const settingsCards = [
   {
-    id: 'about',
-    title: 'About Page Editor',
-    description: 'Edit hero slides, timeline, staff, mission statement and all about page content',
-    icon: FaInfoCircle,
-    color: 'from-blue-500 to-blue-600',
-    href: '/admin/settings/about'
-  },
-  {
     id: 'contact',
     title: 'Contact Information',
     description: 'Manage phone numbers, email addresses, office location and CEO contact details',
     icon: FaPhone,
     color: 'from-green-500 to-green-600',
     href: '/admin/settings/contact'
+  },
+  {
+    id: 'about',
+    title: 'About Page Editor',
+    description: 'Edit hero slides, timeline, staff, mission statement and all about page content',
+    icon: FaInfoCircle,
+    color: 'from-blue-500 to-blue-600',
+    href: '/admin/settings/about'
   },
   {
     id: 'slides',

@@ -135,7 +135,7 @@ export default function ChatUi() {
     } catch (e) { toast.error("Action failed", { id: load }); }
   };
 
-  if (loading) return <div className="fixed inset-0 bg-black flex items-center justify-center text-orange-500 font-bold uppercase tracking-widest">Loading...</div>;
+  if (loading) return <div className="fixed inset-0 z-50 bg-black flex items-center justify-center text-orange-500 font-bold uppercase tracking-widest">Loading...</div>;
 
   return (
     <div className="fixed inset-0 bg-black md:bg-black/80 md:backdrop-blur-md pt-16 md:pt-24 pb-0 md:pb-6 md:px-4 z-[25] overflow-hidden font-sans">
