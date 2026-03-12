@@ -199,7 +199,7 @@ export default function DecorationServicesUi() {
             onClick={() => setShowCheckBooking(true)}
             className="bg-slate-900 text-white px-4 py-2 rounded-lg font-black text-[9px] uppercase flex items-center gap-2 tracking-widest"
           >
-            <FaSearch size={8} /> My Bookings
+            <FaSearch size={8} /> My Quotations
           </button>
         </div>
 
