@@ -58,7 +58,7 @@ export default function HealthServiceUi() {
     <div className="bg-[#0B0F1A] min-h-screen text-slate-200">
       
       {/* 1. CLEAN SLIDER (No Overlaps) */}
-      <section className="relative h-[40vh] md:h-[55vh] bg-slate-900 overflow-hidden">
+      <section className="relative h-[40vh] md:h-[57vh] bg-slate-900 overflow-hidden">
         <AnimatePresence mode="wait">
           {slides.length > 0 ? (
             <motion.img

@@ -48,9 +48,9 @@ export default function ServicesPageUi() {
   ];
 
   return (
-    <div className="pt-26 pb-18 mx-auto">
+    <div className="pt-25 pb-18 mx-auto">
       {/* Navigation Buttons */}
-      <div className="bg-white/80 z-20 sticky top-17 flex flex-wrap gap-4 mb-8 border-b border-orange-200 py-4 justify-center">
+      <div className="bg-white/90 z-20 sticky top-17 flex flex-wrap gap-4 mb-8 border-b border-orange-200 py-4 justify-center">
         {tabs.map((tab) => (
           <button
             key={tab.id}
