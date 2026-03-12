@@ -19,7 +19,6 @@ import emailjs from '@emailjs/browser';
 const WHATSAPP_BOILERPLATE = "Hi Isundunrin Rentals, I am interested in your *{{SERVICE}}* service. Could you provide more details?";
 
 // --- SUB-COMPONENT: Compact Service Card ---
-// Passed contactNumber as a prop to fix the "not working" link
 const ServiceCard = memo(({ item, onImageClick, contactNumber }: any) => (
   <div className="group border border-slate-100 rounded-xl overflow-hidden hover:border-purple-300 transition-all bg-white shadow-sm flex flex-col h-full">
     {item.imageUrl && (
@@ -86,7 +85,7 @@ export default function DecorationServicesUi() {
   const [showCheckBooking, setShowCheckBooking] = useState(false);
   const [passcodeInput, setPasscodeInput] = useState('');
   const [viewableBookings, setViewableBookings] = useState<any[] | null>(null);
-  const [contactNumber, setContactNumber] = useState("447565123627"); // Removed '+' for URL compatibility
+  const [contactNumber, setContactNumber] = useState("447565123627");
   
   // Edit/Delete States
   const [editingBooking, setEditingBooking] = useState<any | null>(null);
@@ -100,29 +99,22 @@ export default function DecorationServicesUi() {
 
   // --- DATA SYNC ---
   useEffect(() => {
-    // 1. Fetch Dynamic Contact Info
-    const fetchContact = async () => {
-        try {
-            const docRef = doc(db, "settings", "contact_info");
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                const phone = docSnap.data().generalPhone;
-                if (phone) setContactNumber(phone.replace(/\s+/g, '').replace('+', ''));
-            }
-        } catch (e) {
-            console.error("Error fetching contact phone:", e);
+    // 1. Real-time Contact Info Listener
+    const unsubContact = onSnapshot(doc(db, "settings", "contact_info"), (docSnap) => {
+        if (docSnap.exists()) {
+            const phone = docSnap.data().generalPhone;
+            if (phone) setContactNumber(phone.replace(/\s+/g, '').replace('+', ''));
         }
-    };
-    fetchContact();
+    });
 
-    // 2. Setup Real-time listeners
+    // 2. Setup Real-time content listeners
     const unsubHeader = onSnapshot(doc(db, "settings", "decoration_config"), (s) => s.exists() && setHeaderText(s.data().headerText));
     const unsubItems = onSnapshot(query(collection(db, "decoration_items"), orderBy("createdAt", "desc")), (s) => setItems(s.docs.map(d => ({id: d.id, ...d.data()}))));
     
     if (auth.currentUser) {
       setFormData(prev => ({...prev, fullName: auth.currentUser?.displayName || '', email: auth.currentUser?.email || ''}));
     }
-    return () => { unsubHeader(); unsubItems(); };
+    return () => { unsubContact(); unsubHeader(); unsubItems(); };
   }, []);
 
   // --- HANDLERS ---
