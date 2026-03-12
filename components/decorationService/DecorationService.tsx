@@ -38,7 +38,17 @@ const ServiceCard = memo(({ item, onImageClick, contactNumber }: any) => (
       </div>
     )}
     <div className="p-3 flex-1 flex flex-col">
-      <h3 className="text-xs font-black text-slate-900 uppercase tracking-tight line-clamp-1 mb-0">{item.name}</h3>
+      {/* ADDED GET QUOTE TO THE RIGHT OF NAME */}
+      <div className="flex justify-between items-start gap-2 mb-1">
+        <h3 className="text-xs font-black text-slate-900 uppercase tracking-tight line-clamp-1 flex-1">{item.name}</h3>
+        <button 
+          onClick={() => onImageClick(item)} 
+          className="underline text-[10px] font-black text-red-800 uppercase hover:text-purple-800 transition-colors whitespace-nowrap"
+        >
+          Get Quote
+        </button>
+      </div>
+      
       <p className="text-[11px] text-slate-500 line-clamp-2 italic leading-tight">
         {item.description}
       </p>
@@ -93,7 +103,7 @@ export default function DecorationServicesUi() {
 
   const [formData, setFormData] = useState({
     fullName: '', phone: '', email: '',
-    contactPreference: 'WhatsApp', // Logic added
+    contactPreference: 'WhatsApp', 
     quantity: 1, bidAmount: 0, notes: '',
     date: '', time: ''
   });
@@ -118,11 +128,16 @@ export default function DecorationServicesUi() {
 
   // --- HANDLERS ---
   const handleGetQuote = async () => {
-    const { fullName, phone, email, date, time, bidAmount } = formData;
+    const { fullName, phone, email, date, time, bidAmount, quantity } = formData;
     if (!fullName || !phone || !email || !date || !time) return toast.error("Missing required fields");
     
-    const [min, max] = selectedItem.priceRange.split('-').map(Number);
-    if (bidAmount < min || bidAmount > max) return toast.error(`Offer must be £${min} - £${max}`);
+    // ENFORCED PRICE RANGE LOGIC
+    const [minRate, maxRate] = selectedItem.priceRange.split('-').map(Number);
+    const minTotal = minRate * quantity;
+    const maxTotal = maxRate * quantity;
+
+    if (bidAmount < minTotal) return toast.error(`Offer too low. Minimum for ${quantity} units is £${minTotal}`);
+    if (bidAmount > maxTotal) return toast.error(`Offer too high. Maximum for ${quantity} units is £${maxTotal}`);
 
     setIsSubmitting(true);
     const passcode = Math.floor(1000 + Math.random() * 9000).toString();
@@ -253,7 +268,6 @@ export default function DecorationServicesUi() {
                 <h3 className="text-xl font-black uppercase italic mb-6">Service <span className="text-purple-600">Quote</span></h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
-                    {/* User Info */}
                     <div className="space-y-4">
                       <div className="space-y-1">
                           <label className="text-[10px] font-black uppercase text-slate-400">Full Name</label>
@@ -267,7 +281,6 @@ export default function DecorationServicesUi() {
                           <label className="text-[10px] font-black uppercase text-slate-400">Email Address</label>
                           <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="email@example.com" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-purple-600" />
                       </div>
-                      {/* PREFERRED CONTACT METHOD - Logic added only */}
                       <div className="space-y-1">
                         <label className="text-[10px] font-black uppercase text-slate-400">Preferred Contact Method</label>
                         <select 
@@ -282,7 +295,6 @@ export default function DecorationServicesUi() {
                       </div>
                     </div>
 
-                    {/* Service Requirements */}
                     <div className="space-y-4">
                     <div className="flex items-center gap-3">
                         <div className="w-1/2 space-y-1">
@@ -298,7 +310,6 @@ export default function DecorationServicesUi() {
                         </div>
                     </div>
 
-                    {/* Budget Helper Display */}
                     <div className="p-3 bg-slate-900 rounded-xl text-white">
                         <p className="text-center text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">Expected Budget Guide</p>
                         <div className="flex flex-col justify-center items-center">
@@ -327,7 +338,7 @@ export default function DecorationServicesUi() {
                         </select>
                         </div>
                     </div>
-                    <textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} placeholder="Additional details (e.g. wall type, specific colors...)" className="w-full p-3 bg-slate-50 border rounded-lg text-xs h-20 resize-none" />
+                    <textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} placeholder="Additional details..." className="w-full p-3 bg-slate-50 border rounded-lg text-xs h-20 resize-none" />
                     </div>
                 </div>
 
