@@ -304,7 +304,7 @@ const PrivacyPageUi = () => {
       </section>
 
       {/* --- MAIN BODY --- */}
-      <div className="max-w-6xl mx-auto py-12 md:py-16 md:px-6 relative z-[20]">
+      <div className="max-w-7xl mx-auto py-12 md:py-16 md:px-4 relative z-[20]">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
           
           <div className="hidden lg:block sticky top-32 space-y-2">
@@ -328,7 +328,7 @@ const PrivacyPageUi = () => {
             ))}
           </div>
 
-          <div className="lg:col-span-3 space-y-12 bg-white p-6 md:p-16 md:rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-slate-50">
+          <div className="lg:col-span-3 space-y-12 bg-white p-6 md:p-12 md:rounded-xl shadow-2xl shadow-slate-200/50 border border-slate-50">
             
             {/* 01. Collection */}
             <section id="collection" className="scroll-mt-32">
