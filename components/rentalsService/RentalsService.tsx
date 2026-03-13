@@ -346,7 +346,7 @@ export default function RentalsServiceUi() {
                           value={formData.fullName} 
                           onChange={e => setFormData({...formData, fullName: e.target.value})} 
                           placeholder="e.g. John Doe" 
-                          className="w-full p-3 bg-white border-2 border-slate-100 rounded-2xl text-xs font-bold outline-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-50 placeholder:text-slate-300" 
+                          className="w-full p-3 bg-white border-2 border-slate-400 rounded-md md:rounded-2xl text-xs font-bold outline-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-50 placeholder:text-slate-300" 
                         />
                       </div>
                     </div>
@@ -360,7 +360,7 @@ export default function RentalsServiceUi() {
                           value={formData.phone} 
                           onChange={e => setFormData({...formData, phone: e.target.value})} 
                           placeholder="+44..." 
-                          className="w-full p-3 bg-white border-2 border-slate-100 rounded-2xl text-xs font-bold outline-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-50 placeholder:text-slate-300" 
+                          className="w-full p-3 bg-white border-2 border-slate-400 rounded-md md:rounded-2xl text-xs font-bold outline-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-50 placeholder:text-slate-300" 
                         />
                         <FaWhatsapp className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-500 opacity-50" size={16} />
                       </div>
@@ -375,7 +375,7 @@ export default function RentalsServiceUi() {
                           value={formData.email} 
                           onChange={e => setFormData({...formData, email: e.target.value})} 
                           placeholder="your@email.com" 
-                          className="w-full p-3 bg-white border-2 border-slate-100 rounded-2xl text-xs font-bold outline-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-50 placeholder:text-slate-300" 
+                          className="w-full p-3 bg-white border-2 border-slate-400 rounded-md md:rounded-2xl text-xs font-bold outline-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-50 placeholder:text-slate-300" 
                         />
                         <FaEnvelope className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-500 opacity-50" size={14} />
                       </div>
@@ -387,7 +387,7 @@ export default function RentalsServiceUi() {
                       <select 
                         value={formData.contactPreference} 
                         onChange={e => setFormData({...formData, contactPreference: e.target.value})} 
-                        className="w-full p-3 bg-white border-2 border-slate-100 rounded-2xl text-xs font-bold outline-none appearance-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-50 cursor-pointer"
+                        className="w-full p-3 bg-white border-2 border-slate-400 rounded-md md:rounded-2xl text-xs font-bold outline-none appearance-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-50 cursor-pointer"
                       >
                         <option value="WhatsApp">Send via WhatsApp</option>
                         <option value="Phone Call">Direct Phone Call</option>
