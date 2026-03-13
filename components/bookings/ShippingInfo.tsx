@@ -88,7 +88,7 @@ export default function ShippingInfo({ totalPrice }: ShippingInfoProps) {
           className="p-2 bg-red-600 text-white rounded-xl flex items-center gap-3 shadow-lg shadow-orange-500/20"
         >
           <FaExclamationCircle className="shrink-0" />
-          <p className="text-[9px] font-black uppercase italic leading-tight">
+          <p className="text-center text-[9px] font-black uppercase italic leading-tight">
             Order is below £{MOV}. Delivery not available. (Local Pickup Only)
           </p>
         </motion.div>

@@ -366,8 +366,8 @@ export default function DecorationServicesUi() {
               {!viewableBookings ? (
                 <div className="flex-1 flex flex-col items-center justify-center max-w-xs mx-auto text-center">
                   <FaLock className="text-slate-200 text-4xl mb-4" />
-                  <h2 className="text-2xl font-black uppercase italic mb-6">Access Quotations</h2>
-                  <input maxLength={4} value={passcodeInput} onChange={e => setPasscodeInput(e.target.value)} placeholder="Passcode" className="w-full text-center text-4xl font-black tracking-[0.4em] p-4 bg-slate-50 border rounded-xl mb-4 outline-none" />
+                  <h2 className="text-xl font-black uppercase italic mb-6">Access Quotations</h2>
+                  <input maxLength={4} value={passcodeInput} onChange={e => setPasscodeInput(e.target.value)} placeholder="Passcode" className="w-full text-center text-2xl font-black tracking-[0.4em] p-3 bg-slate-50 border rounded-xl mb-4 outline-none" />
                   <button onClick={checkPasscode} className="w-full bg-slate-900 text-white py-4 rounded-xl font-black uppercase text-[10px]">Verify</button>
                   <button onClick={handleForgotPasscode} className="mt-4 text-[9px] font-bold text-slate-400 hover:text-purple-600 underline uppercase">Forgot Code?</button>
                 </div>

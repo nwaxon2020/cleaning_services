@@ -6,7 +6,6 @@ import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaPlus, FaMinus, FaTimes, FaShoppingBag } from 'react-icons/fa';
 import PaymentGateway from '@/components/bookings/PaymentGateway'; 
-
 import ShippingInfo from '@/components/bookings/ShippingInfo';
 
 export default function RentalsServiceUi() {
@@ -16,24 +15,17 @@ export default function RentalsServiceUi() {
   const [items, setItems] = useState<any[]>([]);
   const [cart, setCart] = useState<{ [key: string]: any }>({});
   
-  // UI States
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedDetailsItem, setSelectedDetailsItem] = useState<any>(null);
 
-  // --- LOCAL STORAGE LOGIC ---
-  // Load cart from localStorage on mount
   useEffect(() => {
     const savedCart = localStorage.getItem('isundunrin_rental_cart');
     if (savedCart) {
-      try {
-        setCart(JSON.parse(savedCart));
-      } catch (e) {
-        console.error("Failed to parse cart", e);
-      }
+      try { setCart(JSON.parse(savedCart)); } catch (e) { console.error("Failed to parse cart", e); }
     }
   }, []);
 
-  // Save cart to localStorage whenever it changes
   useEffect(() => {
     if (Object.keys(cart).length > 0) {
       localStorage.setItem('isundunrin_rental_cart', JSON.stringify(cart));
@@ -42,7 +34,6 @@ export default function RentalsServiceUi() {
     }
   }, [cart]);
 
-  // 1. Fetch Real-time Data
   useEffect(() => {
     const unsubSlides = onSnapshot(query(collection(db, "renting_slides"), orderBy("createdAt", "desc")), (snap) => {
       setSlides(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -56,7 +47,6 @@ export default function RentalsServiceUi() {
     return () => { unsubSlides(); unsubCats(); unsubItems(); };
   }, []);
 
-  // 2. Hero Slideshow Timer
   useEffect(() => {
     if (slides.length <= 1) return;
     const interval = setInterval(() => {
@@ -65,15 +55,19 @@ export default function RentalsServiceUi() {
     return () => clearInterval(interval);
   }, [slides]);
 
-  // 3. Cart Logic
   const toggleItem = (item: any) => {
     setCart(prev => {
       const newCart = { ...prev };
-      if (newCart[item.id]) {
-        delete newCart[item.id];
-      } else {
-        newCart[item.id] = { ...item, quantity: 1 };
-      }
+      if (newCart[item.id]) { delete newCart[item.id]; } 
+      else { newCart[item.id] = { ...item, quantity: 1 }; }
+      return newCart;
+    });
+  };
+
+  const removeItem = (id: string) => {
+    setCart(prev => {
+      const newCart = { ...prev };
+      delete newCart[id];
       return newCart;
     });
   };
@@ -102,26 +96,22 @@ export default function RentalsServiceUi() {
   return (
     <div className="pb-12 relative min-h-screen bg-[#F8FAFC]">
       {/* HERO SLIDESHOW */}
-      <div className="relative h-[65vh] w-full overflow-hidden">
+      <div className="relative h-[45vh] md:h-[65vh] w-full overflow-hidden">
         <AnimatePresence mode="wait">
           {slides.length > 0 ? (
             <motion.img
-              key={currentSlide}
-              src={slides[currentSlide]?.url}
+              key={currentSlide} src={slides[currentSlide]?.url}
               initial={{ opacity: 0, scale: 1.1 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-              transition={{ duration: 1.2 }}
-              className="absolute inset-0 w-full h-full object-cover"
+              transition={{ duration: 1.2 }} className="absolute inset-0 w-full h-full object-cover"
             />
-          ) : (
-            <div className="absolute inset-0 bg-slate-200 animate-pulse" />
-          )}
+          ) : ( <div className="absolute inset-0 bg-slate-200 animate-pulse" /> )}
         </AnimatePresence>
         <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60 flex flex-col items-center justify-center text-white text-center p-6">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <h1 className="text-3xl md:text-6xl text-orange-500 font-black uppercase italic tracking-tighter">
               Isundunrin <span className="text-blue-500">Rentals</span>
             </h1>
-            <p className="bg-black/60 rounded p-0.5 mt-4 text-sm md:text-base font-bold tracking-[0.3em] uppercase opacity-90">
+            <p className="bg-black/60 rounded p-1.5 md:p-0.5 mt-4 text-xs md:text-sm md:text-base font-bold md:tracking-[0.3em] uppercase opacity-90">
               Premium Material Hire • Bristol & Southwest
             </p>
           </motion.div>
@@ -129,14 +119,14 @@ export default function RentalsServiceUi() {
       </div>
 
       {/* RENTAL INVENTORY */}
-      <div className="max-w-7xl mx-auto px-4 py-16 pb-40">
+      <div className="max-w-7xl mx-auto px-2 md:px-4 py-4 md:py-16 md:pb-40">
         {categories.map((cat, idx) => {
           const catItems = items.filter(i => i.categoryId === cat.id);
           if (catItems.length === 0) return null;
           const theme = colorThemes[idx % colorThemes.length];
 
           return (
-            <section key={cat.id} className={`mb-16 p-8 rounded-3xl ${theme.lightBg}`} style={{ boxShadow: `0 10px 30px -15px ${theme.accent}` }}>
+            <section key={cat.id} className={`px-3 py-5 md:mb-16 md:p-8 rounded-md md:rounded-3xl ${theme.lightBg}`} style={{ boxShadow: `0 10px 30px -15px ${theme.accent}` }}>
               <div className="flex items-center gap-4 mb-10">
                 <span className={`h-1 flex-1 ${theme.bg} rounded-full`}></span>
                 <h2 className={`text-sm font-bold uppercase italic tracking-widest px-6 py-3 ${theme.bg} text-white rounded-full shadow-lg`}>
@@ -144,29 +134,38 @@ export default function RentalsServiceUi() {
                 </h2>
                 <span className={`h-1 flex-1 ${theme.bg} rounded-full`}></span>
               </div>
-              <div className="flex flex-wrap justify-center gap-6">
+              <div className="grid grid-cols-2 md:flex flex-wrap justify-center gap-3 md:gap-6">
                 {catItems.map(item => {
                   const isSelected = !!cart[item.id];
                   return (
                     <motion.div
-                      whileHover={{ y: -5 }} whileTap={{ scale: 0.98 }}
-                      onClick={() => toggleItem(item)}
-                      key={item.id}
-                      className={`w-[280px] cursor-pointer p-6 rounded-[2rem] transition-all duration-300 border-2 shadow-md ${
-                        isSelected ? `${theme.border} ${theme.lightBg} ring-4 ${theme.text} ring-opacity-20` : `${theme.cardBg} border-transparent hover:${theme.border} hover:shadow-xl`
-                      }`}
+                      key={item.id} whileHover={{ y: -5 }} whileTap={{ scale: 0.98 }}
+                      className={`mb-5 relative flex flex-col md:w-[280px] cursor-pointer rounded-lg md:rounded-[2rem] overflow-hidden transition-all duration-300 md:border-2 ${
+                        isSelected ? `${theme.border} ring-4 ${theme.text} ring-opacity-20` : `border-transparent shadow-md hover:${theme.border} hover:shadow-xl`
+                      } ${theme.cardBg}`}
                     >
-                      {isSelected && (
-                        <div className={`absolute top-4 right-4 ${theme.bg} text-white w-6 h-6 rounded-full flex items-center justify-center`}>
-                          <FaShoppingBag size={10} />
+                      {/* Top content wrapper to make clicking toggle the cart */}
+                      <div className="p-3 md:p-6 flex-1" onClick={() => toggleItem(item)}>
+                        {isSelected && (
+                          <div className={`absolute top-4 right-4 ${theme.bg} text-white w-6 h-6 rounded-full flex items-center justify-center`}>
+                            <FaShoppingBag size={10} />
+                          </div>
+                        )}
+                        <h3 className="font-black text-slate-800 text-sm md:text-lg mb-1">{item.name}</h3>
+                        <p className={`text-[8px] md:text-[10px] ${theme.text} font-bold uppercase tracking-wider mb-2 md:mb-4 line-clamp-2`}>{item.description || "Premium Hire Item"}</p>
+                        <div className="flex items-end justify-between">
+                          <span className={`text-xl md:text-2xl font-black ${theme.heading} italic`}>£{item.price}</span>
+                          <span className={`text-[10px] ${theme.text} font-black uppercase`}>Per Hire</span>
                         </div>
-                      )}
-                      <h3 className="font-black text-slate-800 text-lg mb-1">{item.name}</h3>
-                      <p className={`text-[10px] ${theme.text} font-bold uppercase tracking-wider mb-4 line-clamp-2`}>{item.description || "Premium Hire Item"}</p>
-                      <div className="flex items-end justify-between">
-                        <span className={`text-2xl font-black ${theme.heading} italic`}>£{item.price}</span>
-                        <span className={`text-[10px] ${theme.text} font-black uppercase`}>Per Hire</span>
                       </div>
+
+                      {/* View Details - Styled with dynamic item color */}
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setSelectedDetailsItem(item); }}
+                        className={`${theme.bg} text-white text-[9px] md:text-[10px] py-2 md:py-3 font-black uppercase tracking-widest hover:brightness-90 transition-all`}
+                      >
+                        View Details
+                      </button>
                     </motion.div>
                   );
                 })}
@@ -176,54 +175,72 @@ export default function RentalsServiceUi() {
         })}
       </div>
 
+      {/* ITEM DETAILS OVERLAY */}
+      <AnimatePresence>
+        {selectedDetailsItem && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setSelectedDetailsItem(null)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+              className="bg-white p-6 md:p-8 rounded-xl md:rounded-3xl max-w-lg w-full relative shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button onClick={() => setSelectedDetailsItem(null)} className="absolute top-2 md:top-4 right-2 md:right-4 p-2 bg-slate-100 rounded-full hover:bg-red-500 hover:text-white transition-all"><FaTimes /></button>
+              <h2 className="text-xl font-black text-slate-900 uppercase italic mb-2 leading-none">{selectedDetailsItem.name}</h2>
+              <div className="h-1 w-20 bg-blue-600 mb-6 rounded-full"></div>
+              <p className="text-slate-600 text-sm leading-relaxed mb-8">{selectedDetailsItem.description || "This premium hire item is maintained to the highest standards."}</p>
+              <div className="flex items-center justify-between pt-6 border-t border-slate-100">
+                <div>
+                  <span className="text-slate-400 font-black uppercase text-[10px] block mb-1">Rental Price</span>
+                  <span className="text-3xl font-black text-slate-900 italic">£{selectedDetailsItem.price}</span>
+                </div>
+                <button 
+                  onClick={() => { toggleItem(selectedDetailsItem); setSelectedDetailsItem(null); }}
+                  className={`${cart[selectedDetailsItem.id] ? 'bg-red-500' : 'bg-slate-900'} text-sm text-white px-6 py-3 rounded-xl font-black uppercase italic tracking-widest transition-all hover:scale-105`}
+                >
+                  {cart[selectedDetailsItem.id] ? 'Remove Item' : 'Add to Hire'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* FLOATING ACTION BAR */}
       <AnimatePresence>
         {Object.keys(cart).length > 0 && (
           <motion.div
             initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }}
-            className="sticky bottom-3 left-1/2 -translate-x-1/2 z-[50] w-[90%] max-w-[22rem]"
+            className="mx-auto sticky bottom-4 md:bottom-3 md:left-1/2 md:-translate-x-1/2 z-[10] w-[90%] max-w-[22rem]"
           >
             <button
               onClick={() => setIsCheckoutOpen(true)}
-              className="w-full bg-slate-900 text-white p-3 rounded-[2.5rem] font-black uppercase italic tracking-widest flex justify-between items-center shadow-2xl hover:scale-[1.02] transition-all"
+              className="w-full bg-slate-900 text-white p-2 md:p-3 rounded-[2.5rem] font-black uppercase italic tracking-widest flex justify-between items-center shadow-2xl hover:scale-[1.02] transition-all"
             >
-              <span className="text-xs flex items-center gap-2"><FaShoppingBag /> Continue to Checkout</span>
-              <span className="bg-blue-600 px-3 py-1 rounded-full text-xs">{Object.keys(cart).length} Items</span>
+              <span className="text-[11px] md:text-xs flex items-center gap-2"><FaShoppingBag /> Continue to Checkout</span>
+              <span className="bg-blue-600 p-2 md:px-3 md:py-1 rounded-full text-xs">{Object.keys(cart).length} Items</span>
             </button>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* CENTERED OVERLAY DRAWER */}
+      {/* CHECKOUT DRAWER */}
       <AnimatePresence>
         {isCheckoutOpen && (
-            <motion.div
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] flex items-center justify-center p-4"
-            >
-            <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white w-full max-w-lg md:max-w-4xl h-[98vh] shadow-2xl p-6 md:p-6 flex flex-col rounded-md md:rounded-xl relative overflow-hidden"
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] flex items-center justify-center p-3 md:p-4">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white w-full max-w-lg md:max-w-4xl h-[98vh] shadow-2xl p-4 py-6 md:p-6 flex flex-col rounded-md md:rounded-xl relative overflow-hidden"
             >
                 <div className="flex justify-between items-start mb-3">
                   <div>
-                    <h2 className="text-xl md:text-2xl font-black uppercase italic leading-none">
-                      Your <span className="text-blue-600">Items</span>
-                    </h2>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">
-                      Review your selection before payment
-                    </p>
+                    <h2 className="text-xl md:text-2xl font-black uppercase italic leading-none">Your <span className="text-blue-600">Items</span></h2>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Review your selection before payment</p>
                   </div>
-                  <button 
-                      onClick={() => setIsCheckoutOpen(false)} 
-                      className="p-3 bg-slate-100 rounded-full hover:bg-red-50 hover:text-red-500 transition-all hover:rotate-90"
-                  >
-                      <FaTimes size={15} />
-                  </button>
+                  <button onClick={() => setIsCheckoutOpen(false)} className="p-3 bg-slate-100 rounded-full hover:bg-red-50 hover:text-red-500 transition-all hover:rotate-90"><FaTimes size={15} /></button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
@@ -231,14 +248,10 @@ export default function RentalsServiceUi() {
                       {Object.values(cart).map(item => {
                         const itemTheme = colorThemes[categories.findIndex(cat => cat.id === item.categoryId) % colorThemes.length];
                         return (
-                            <div 
-                              key={item.id} 
-                              className={`flex items-center justify-between py-1 px-2 ${itemTheme?.lightBg || 'bg-slate-50'} rounded-lg border ${itemTheme?.cardBorder || 'border-slate-100'} transition-transform hover:scale-[1.02]`}
-                            >
+                            <div key={item.id} className={`flex items-center justify-between py-1 px-2 ${itemTheme?.lightBg || 'bg-slate-50'} rounded-lg border ${itemTheme?.cardBorder || 'border-slate-100'} transition-transform hover:scale-[1.02]`}>
+                              <button onClick={() => removeItem(item.id)} className="mr-2 p-1 text-slate-400 hover:text-red-600 transition-colors"><FaTimes size={12} /></button>
                               <div className="flex-1 flex items-center justify-between mr-2 ">
-                                  <h4 className={`font-bold text-slate-800 text-xs uppercase ${itemTheme?.text} line-clamp-1`}>
-                                  {item.name}
-                                  </h4>
+                                  <h4 className={`font-bold text-slate-800 text-xs uppercase ${itemTheme?.text} line-clamp-1`}>{item.name}</h4>
                                   <p className={`text-xs ${itemTheme?.text} font-bold`}>£{item.price}</p>
                               </div>
                               <div className="flex items-center gap-3 bg-white px-2 rounded-xl border-2 border-slate-100 shadow-xs">
@@ -250,10 +263,7 @@ export default function RentalsServiceUi() {
                         );
                       })}
                   </div>
-
-                  {/* DROP THE SHIPPING COMPONENT HERE */}
                   <ShippingInfo totalPrice={totalPrice} />
-
                 </div>
 
                 <div className="pt-2 border-t-2 border-dashed border-slate-200 mt-6 bg-white">
@@ -262,10 +272,7 @@ export default function RentalsServiceUi() {
                       <span className="text-slate-500 font-black uppercase text-[10px] tracking-[0.2em] block mb-1">Estimated Total</span>
                       <span className="text-2xl md:text-3xl font-black text-slate-900 italic tracking-tighter leading-none">£{totalPrice.toFixed(2)}</span>
                     </div>
-                    <button
-                      onClick={() => setShowPaymentModal(true)}
-                      className="w-full md:w-auto md:px-8 bg-blue-600 text-white py-3 rounded-xl font-bold uppercase italic tracking-tighter text-lg shadow-xl hover:bg-blue-700 hover:scale-[1.03] transition-all flex items-center justify-center gap-3"
-                    >
+                    <button onClick={() => setShowPaymentModal(true)} className="w-full md:w-auto md:px-8 bg-blue-600 text-white py-3 rounded-xl font-bold uppercase italic tracking-tighter text-lg shadow-xl hover:bg-blue-700 hover:scale-[1.03] transition-all flex items-center justify-center gap-3">
                       Secure Checkout <FaShoppingBag size={14} />
                     </button>
                   </div>
@@ -274,21 +281,9 @@ export default function RentalsServiceUi() {
             </motion.div>
             </motion.div>
         )}
-        </AnimatePresence>
+      </AnimatePresence>
 
-      <PaymentGateway 
-        isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
-        totalAmount={totalPrice}
-        customerOrder={Object.values(cart)}
-        serviceType="Rental Services"
-        onSuccess={() => { 
-          setCart({}); 
-          setIsCheckoutOpen(false); 
-          setShowPaymentModal(false); 
-          localStorage.removeItem('isundunrin_rental_cart'); // Clear storage on success
-        }}
-      />
+      <PaymentGateway isOpen={showPaymentModal} onClose={() => setShowPaymentModal(false)} totalAmount={totalPrice} customerOrder={Object.values(cart)} serviceType="Rental Services" onSuccess={() => { setCart({}); setIsCheckoutOpen(false); setShowPaymentModal(false); localStorage.removeItem('isundunrin_rental_cart'); }} />
     </div>
   );
 }

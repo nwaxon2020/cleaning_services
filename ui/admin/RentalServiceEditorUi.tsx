@@ -302,7 +302,7 @@ export default function RentingMasterEditor() {
             )}
           </AnimatePresence>
 
-          <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+          <div className="space-y-2 max-h-62 overflow-y-auto pr-2 custom-scrollbar">
             {categories.map(cat => (
               <div key={cat.id} className="flex justify-between items-center p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
                 <span className="text-xs font-black uppercase text-slate-600">{cat.name}</span>
