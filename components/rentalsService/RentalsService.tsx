@@ -423,9 +423,9 @@ export default function RentalsServiceUi() {
               {!viewableOrders ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-center max-w-xs mx-auto">
                   <FaLock className="text-slate-200 text-5xl mb-6" />
-                  <h2 className="text-2xl font-black uppercase italic mb-4">Track Order</h2>
-                  <input maxLength={4} value={passcodeInput} onChange={e => setPasscodeInput(e.target.value)} placeholder="Passcode" className="w-full text-center text-4xl font-black tracking-[0.4em] p-4 bg-slate-50 border rounded-2xl mb-4 outline-none focus:border-blue-500" />
-                  <button onClick={checkPasscode} className="w-full bg-slate-900 text-white py-4 rounded-xl font-black uppercase">Verify Order</button>
+                  <h2 className="text-xl font-black uppercase italic mb-4">Track Order</h2>
+                  <input maxLength={4} value={passcodeInput} onChange={e => setPasscodeInput(e.target.value)} placeholder="Passcode" className="w-full text-center text-2xl font-black tracking-[0.4em] p-3 bg-slate-50 border rounded-2xl mb-4 outline-none focus:border-blue-500" />
+                  <button onClick={checkPasscode} className="w-full bg-slate-900 text-white py-3 rounded-xl font-black uppercase">Verify Order</button>
                   <button onClick={handleForgotPasscode} className="mt-4 text-[10px] font-black text-slate-400 underline uppercase tracking-widest">Forgot Code?</button>
                 </div>
               ) : (
