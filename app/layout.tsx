@@ -18,24 +18,25 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// POPULATED METADATA BASED ON SITE SETTINGS
 export const metadata: Metadata = {
-  title: "Isundunrin Services | Professional Cleaning Services",
-  description: "Premier cleaning services in Bristol, UK. Expert residential and commercial cleaning with hospital-grade standards.",
-  keywords: ["Cleaning Services Bristol", "Office Cleaning Lincolnshire", "Domestic Cleaners", "Professional House Cleaning"],
+  title: "Isundunrin Services | Your Premier Service provider",
+  description: "Premier residential and commercial services in Bristol, UK. Expert cleaning, rentals, decoration, and health concierge with premium standards.",
+  keywords: ["Isundunrin Services", "Cleaning Services Bristol", "Rental Services UK", "Decoration Services Bristol", "Health Concierge UK"],
   authors: [{ name: "Isundunrin Team" }],
   
   // Open Graph (Facebook, WhatsApp, LinkedIn)
   openGraph: {
-    title: "BristolClean | Professional Cleaning Services",
-    description: "Expert cleaning services for your home and office. Restore comfort to your space today.",
-    url: "https://bostonclean.co.uk", // Replace with your actual domain
-    siteName: "BristolClean",
+    title: "Isundunrin Services | Professional Care & Excellence",
+    description: "Expert cleaning, rentals, decoration, and health concierge for your home and office. Restore comfort to your space today.",
+    url: "https://isundunrin.co.uk", // Replace with your actual domain
+    siteName: "Isundunrin",
     images: [
       {
-        url: "https://res.cloudinary.com/dqm6hjihm/image/upload/v1772900012/site_image_o1mqvz.png", // Ensure you save your logo/banner as og-image.png in /public
+        url: "https://res.cloudinary.com/dqm6hjihm/image/upload/v1772900012/site_image_o1mqvz.png",
         width: 1200,
         height: 630,
-        alt: "BristolClean Professional Services",
+        alt: "Isundunrin Professional Services",
       },
     ],
     locale: "en_GB",
@@ -45,15 +46,15 @@ export const metadata: Metadata = {
   // Twitter Tags
   twitter: {
     card: "summary_large_image",
-    title: "BristolClean | Professional Cleaning Services",
-    description: "Expert residential and commercial cleaning in Bristol, UK.",
+    title: "Isundunrin Services | Professional Care & Excellence",
+    description: "Expert cleaning, rentals, and premium concierge services in Bristol, UK.",
     images: ["https://res.cloudinary.com/dqm6hjihm/image/upload/v1772900012/site_image_o1mqvz.png"], 
   },
 
-  // Icons
+  // Icons (Preserved as requested)
   icons: {
     icon: "/icon.png",
-    apple: "/apple-icon.png", // Recommended for iPhone home screen bookmarks
+    apple: "/apple-icon.png", 
   },
 };
 
