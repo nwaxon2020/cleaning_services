@@ -75,7 +75,7 @@ export default function HealthServiceUi() {
           )}
         </AnimatePresence>
         <div className="absolute inset-0 flex flex-col justify-center items-center text-center p-4">
-          <h1 className="text-4xl md:text-6xl font-black uppercase italic tracking-tighter text-white">
+          <h1 className="text-3xl md:text-6xl font-black uppercase italic tracking-tighter text-white">
             Healthcare <span className="text-emerald-500">Excellence</span>
           </h1>
           <p className="bg-black/60 rounded-md px-3 py-1 text-slate-300 text-[10px] md:text-xs uppercase font-black tracking-[0.3em] mt-2">Professional Medical Solutions</p>
@@ -87,8 +87,8 @@ export default function HealthServiceUi() {
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             {/* WhatsApp */}
-            <a href={`https://wa.me/${contact.whatsapp}`} target="_blank" className="flex items-center gap-4 p-4 bg-[#1C2333] rounded-2xl border border-slate-700/50 hover:border-emerald-500/50 transition-all group">
-              <div className="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform"><FaWhatsapp size={20}/></div>
+            <a href={`https://wa.me/${contact.whatsapp}`} target="_blank" className="flex items-center gap-4 p-4 bg-[#1C2333] rounded-lg md:rounded-2xl border border-slate-700/50 hover:border-emerald-500/50 transition-all group">
+              <div className="w-10 h-10 bg-emerald-600 text-white rounded-md md:rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform"><FaWhatsapp size={20}/></div>
               <div className="overflow-hidden">
                 <p className="text-[9px] font-black uppercase text-slate-500">WhatsApp</p>
                 <p className="text-xs font-bold text-slate-200 truncate">{contact.phone}</p>
@@ -96,8 +96,8 @@ export default function HealthServiceUi() {
             </a>
 
             {/* Email */}
-            <a href={`mailto:${contact.email}`} className="flex items-center gap-4 p-4 bg-[#1C2333] rounded-2xl border border-slate-700/50 hover:border-blue-500/50 transition-all group">
-              <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform"><FaEnvelope size={18}/></div>
+            <a href={`mailto:${contact.email}`} className="flex items-center gap-4 p-4 bg-[#1C2333] rounded-lg md:rounded-2xl border border-slate-700/50 hover:border-blue-500/50 transition-all group">
+              <div className="w-10 h-10 bg-blue-600 text-white rounded-md md:rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform"><FaEnvelope size={18}/></div>
               <div className="overflow-hidden">
                 <p className="text-[9px] font-black uppercase text-slate-500">Email Address</p>
                 <p className="text-xs font-bold text-slate-200 truncate">{contact.email}</p>
@@ -105,8 +105,8 @@ export default function HealthServiceUi() {
             </a>
 
             {/* Chat */}
-            <button onClick={() => window.location.href='/chat'} className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-transparent hover:bg-emerald-50 transition-all group text-left">
-              <div className="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform"><FaComments size={18}/></div>
+            <button onClick={() => window.location.href='/chat'} className="flex items-center gap-4 p-4 bg-white rounded-lg md:rounded-2xl border border-transparent hover:bg-emerald-50 transition-all group text-left">
+              <div className="w-10 h-10 bg-slate-900 text-white rounded-md md:rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform"><FaComments size={18}/></div>
               <div>
                 <p className="text-[9px] font-black uppercase text-slate-400">Consultation</p>
                 <p className="text-xs font-black text-slate-900">Start Live Chat</p>
@@ -116,7 +116,7 @@ export default function HealthServiceUi() {
 
           {/* Address Bar */}
           <div className="flex flex-col md:flex-row items-center justify-center gap-4 text-slate-400 border-t border-slate-800/50 pt-6">
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
+            <div className="text-center flex md:items-center md:gap-2 text-[10px] font-black uppercase tracking-widest">
               <FaMapMarkerAlt className="text-emerald-500" /> {contact.address}
             </div>
             <div className="hidden md:block w-1 h-1 bg-slate-700 rounded-full" />

@@ -50,12 +50,12 @@ export default function ServicesPageUi() {
   return (
     <div className="pt-25 pb-18 mx-auto">
       {/* Navigation Buttons */}
-      <div className="bg-white/90 z-20 sticky top-17 flex flex-wrap gap-4 mb-8 border-b border-orange-200 py-4 justify-center">
+      <div className="px-4 md:px-[4rem] lg:px-[12rem] bg-white/90 z-20 sticky top-17 grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 border-b border-orange-200 py-4 justify-center items-center">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => handleTabChange(tab.id)} // Use the new handler
-            className={`px-6 py-2 rounded-full font-black uppercase text-[10px] tracking-widest transition-all duration-300 ${
+            className={`p-2 md:px-4 md:py-2.5 rounded-full font-black uppercase text-[9px] md:text-[10px] tracking-widest transition-all duration-300 ${
               activeTab === tab.id 
               ? 'bg-gray-900 text-white shadow-lg' 
               : 'bg-gray-200 hover:bg-gray-300 text-gray-700'

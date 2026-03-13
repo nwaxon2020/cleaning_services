@@ -9,9 +9,7 @@ import {
 } from 'firebase/firestore';
 import { 
   FaWhatsapp, FaComments, FaTimes, 
-  FaSpinner, FaExclamationTriangle, 
-  FaSearch, FaLock, FaEdit, FaTrash, FaCheck
-} from 'react-icons/fa';
+  FaSpinner, FaExclamationTriangle, FaSearch, FaLock, FaEdit, FaTrash, FaCheck } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import emailjs from '@emailjs/browser';
@@ -20,7 +18,7 @@ const WHATSAPP_BOILERPLATE = "Hi Isundunrin Rentals, I am interested in your *{{
 
 // --- SUB-COMPONENT: Compact Service Card ---
 const ServiceCard = memo(({ item, onImageClick, contactNumber }: any) => (
-  <div className="group border border-slate-100 rounded-xl overflow-hidden hover:border-purple-300 transition-all bg-white shadow-sm flex flex-col h-full">
+  <div className="group border border-slate-200 md:rounded-xl overflow-hidden hover:border-purple-300 transition-all bg-white shadow-sm flex flex-col h-full">
     {item.imageUrl && (
       <div 
         className="aspect-[4/3] w-full bg-slate-50 relative overflow-hidden cursor-pointer" 
@@ -32,18 +30,17 @@ const ServiceCard = memo(({ item, onImageClick, contactNumber }: any) => (
           loading="lazy" 
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
         />
-        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <p className='uppercase font-black text-sm text-white'>get quote</p>
+        <div className="absolute inset-0 bg-black/20 md:opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <p className='uppercase font-black text-xs md:text-sm text-white underline md:no-underline'>get quote</p>
         </div>
       </div>
     )}
-    <div className="p-3 flex-1 flex flex-col">
-      {/* ADDED GET QUOTE TO THE RIGHT OF NAME */}
+    <div className="p-2 md:p-3 flex-1 flex flex-col">
       <div className="flex justify-between items-start gap-2 mb-1">
         <h3 className="text-xs font-black text-slate-900 uppercase tracking-tight line-clamp-1 flex-1">{item.name}</h3>
         <button 
           onClick={() => onImageClick(item)} 
-          className="underline text-[10px] font-black text-red-800 uppercase hover:text-purple-800 transition-colors whitespace-nowrap"
+          className="hidden md:block underline text-[10px] font-black text-red-800 uppercase hover:text-purple-800 transition-colors whitespace-nowrap"
         >
           Get Quote
         </button>
@@ -131,7 +128,6 @@ export default function DecorationServicesUi() {
     const { fullName, phone, email, date, time, bidAmount, quantity } = formData;
     if (!fullName || !phone || !email || !date || !time) return toast.error("Missing required fields");
     
-    // ENFORCED PRICE RANGE LOGIC
     const [minRate, maxRate] = selectedItem.priceRange.split('-').map(Number);
     const minTotal = minRate * quantity;
     const maxTotal = maxRate * quantity;
@@ -151,6 +147,18 @@ export default function DecorationServicesUi() {
         status: 'pending',
         createdAt: serverTimestamp()
       });
+
+      // ADDED: EMAILJS NOTIFICATION LOGIC
+      await emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', {
+        to_name: "Admin",
+        from_name: fullName,
+        service_name: selectedItem.name,
+        offer_amount: bidAmount,
+        quantity: quantity,
+        passcode: passcode,
+        user_email: email
+      }, 'YOUR_PUBLIC_KEY');
+
       setSuccessOverlay({ passcode });
     } catch (e) { toast.error("Submission failed"); }
     finally { setIsSubmitting(false); }
@@ -188,7 +196,7 @@ export default function DecorationServicesUi() {
       });
       toast.success("Booking updated");
       setEditingBooking(null);
-      checkPasscode(); // Refresh list
+      checkPasscode(); 
     } catch (e) { toast.error("Update failed"); }
   };
 
@@ -198,28 +206,26 @@ export default function DecorationServicesUi() {
       await deleteDoc(doc(db, "decoration_bookings", deleteConfirm.id));
       toast.success("Booking cancelled");
       setDeleteConfirm(null);
-      checkPasscode(); // Refresh list
+      checkPasscode(); 
     } catch (e) { toast.error("Deletion failed"); }
   };
 
   return (
     <div className="bg-[#FCFCFC] min-h-screen p-0 pt-4">
-      <div className="max-w-[1600px] mx-auto px-4">
-        {/* Compact Header */}
-        <div className="flex gap-6 justify-center items-center mb-6 border-b border-slate-100 py-4">
-          <h2 className="text-sm md:text-lg font-black uppercase italic tracking-tighter text-slate-800">
+      <div className="max-w-[1600px] mx-auto px-1.5 md:px-4">
+        <div className="flex flex-col md:flex-row gap-3 md:gap-6 justify-center items-center mb-3 md:mb-6 border-b border-slate-100 py-4">
+          <h2 className="px-4 md:px-0 text-center md:text-left text-sm md:text-lg font-black uppercase italic tracking-tighter text-slate-800">
             {headerText || "Decoration Services"}
           </h2>
           <button 
             onClick={() => setShowCheckBooking(true)}
-            className="bg-slate-900 text-white px-4 py-2 rounded-lg font-black text-[9px] uppercase flex items-center gap-2 tracking-widest"
+            className="bg-slate-900 text-white px-4 py-2.5 rounded-lg font-black text-[9px] uppercase flex items-center gap-2 tracking-widest"
           >
             <FaSearch size={8} /> My Quotations
           </button>
         </div>
 
-        {/* Compact Grid */}
-        <div className="mx-auto max-w-6xl grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="mx-auto max-w-6xl grid grid-cols-2 md:grid-cols-4 gap-1.5 md:gap-3">
           {items.map(item => (
             <div key={item.id} className='mb-4'>
                 <ServiceCard  
@@ -232,7 +238,6 @@ export default function DecorationServicesUi() {
         </div>
       </div>
 
-      {/* MODAL: Success & Passcode */}
       <AnimatePresence>
         {successOverlay && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[200] bg-purple-700 flex items-center justify-center p-6 text-white text-center">
@@ -249,11 +254,10 @@ export default function DecorationServicesUi() {
         )}
       </AnimatePresence>
 
-      {/* MODAL: Booking Form */}
       <AnimatePresence>
         {selectedItem && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-2">
-            <motion.div initial={{ y: 20 }} animate={{ y: 0 }} className="bg-white w-full max-w-4xl h-[95vh] rounded-2xl overflow-hidden flex flex-col md:flex-row relative">
+            <motion.div initial={{ y: 20 }} animate={{ y: 0 }} className="bg-white w-full max-w-4xl h-[95vh] rounded-md md:rounded-2xl overflow-hidden flex flex-col md:flex-row relative">
               <button onClick={() => setSelectedItem(null)} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full z-10 hover:bg-red-500 hover:text-white transition-all"><FaTimes /></button>
               
               <div className="hidden md:block w-1/3 bg-slate-50 relative">
@@ -264,7 +268,7 @@ export default function DecorationServicesUi() {
                 </div>
               </div>
 
-              <div className="flex-1 p-6 overflow-y-auto custom-scrollbar flex flex-col">
+              <div className="flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar flex flex-col">
                 <h3 className="text-xl font-black uppercase italic mb-6">Service <span className="text-purple-600">Quote</span></h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
@@ -311,7 +315,8 @@ export default function DecorationServicesUi() {
                     </div>
 
                     <div className="p-3 bg-slate-900 rounded-xl text-white">
-                        <p className="text-center text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">Expected Budget Guide</p>
+                        <p className="text-center text-[9px] font-black uppercase text-slate-400 tracking-widest">Expected Budget Guide</p>
+                        <p className='text-center mt-0 font-bold text-[8px] text-yellow-500  mb-1'>please not your offer cannot be below or above the estimated price given</p>
                         <div className="flex flex-col justify-center items-center">
                         <span className="text-xl font-black italic">
                             £{(Number(selectedItem.priceRange.split('-')[0]) * (formData.quantity || 1)).toLocaleString()} 
@@ -348,6 +353,56 @@ export default function DecorationServicesUi() {
                 </div>
             </motion.div>
             </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL: My Quotations / Access */}
+      <AnimatePresence>
+        {showCheckBooking && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[150] bg-slate-900/90 flex items-center justify-center p-2">
+            <div className="bg-white w-full max-w-4xl h-[98vh] rounded-2xl p-6 md:p-10 flex flex-col relative overflow-hidden">
+              <button onClick={() => { setShowCheckBooking(false); setViewableBookings(null); setEditingBooking(null); }} className="absolute top-6 right-6 text-slate-400"><FaTimes size={20} /></button>
+              
+              {!viewableBookings ? (
+                <div className="flex-1 flex flex-col items-center justify-center max-w-xs mx-auto text-center">
+                  <FaLock className="text-slate-200 text-4xl mb-4" />
+                  <h2 className="text-2xl font-black uppercase italic mb-6">Access Quotations</h2>
+                  <input maxLength={4} value={passcodeInput} onChange={e => setPasscodeInput(e.target.value)} placeholder="Passcode" className="w-full text-center text-4xl font-black tracking-[0.4em] p-4 bg-slate-50 border rounded-xl mb-4 outline-none" />
+                  <button onClick={checkPasscode} className="w-full bg-slate-900 text-white py-4 rounded-xl font-black uppercase text-[10px]">Verify</button>
+                  <button onClick={handleForgotPasscode} className="mt-4 text-[9px] font-bold text-slate-400 hover:text-purple-600 underline uppercase">Forgot Code?</button>
+                </div>
+              ) : (
+                <div className="flex-1 overflow-hidden flex flex-col">
+                  <h2 className="text-xl font-black uppercase italic mb-6">My Quotes</h2>
+                  <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
+                    {viewableBookings.map(b => (
+                      <div key={b.id} className="p-4 bg-slate-50 border rounded-xl">
+                        {editingBooking?.id === b.id ? (
+                           <div className="grid grid-cols-2 gap-3 p-2 bg-white rounded-lg border border-purple-200">
+                              <input value={editingBooking.phone} onChange={e => setEditingBooking({...editingBooking, phone: e.target.value})} placeholder="Phone" className="p-2 border rounded text-xs" />
+                              <input value={editingBooking.date} onChange={e => setEditingBooking({...editingBooking, date: e.target.value})} type="date" className="p-2 border rounded text-xs" />
+                              <input value={editingBooking.time} onChange={e => setEditingBooking({...editingBooking, time: e.target.value})} placeholder="Time" className="p-2 border rounded text-xs" />
+                              <textarea value={editingBooking.address} onChange={e => setEditingBooking({...editingBooking, address: e.target.value})} placeholder="Notes" className="p-2 border rounded text-xs col-span-2" />
+                              <button onClick={handleUpdateBooking} className="col-span-2 bg-purple-600 text-white py-2 rounded-md font-black text-[10px] uppercase flex items-center justify-center gap-2"><FaCheck /> Update Details</button>
+                           </div>
+                        ) : (
+                          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 items-center">
+                            <div><p className="text-[7px] font-black uppercase text-slate-400">Service</p><p className="text-[10px] font-bold uppercase line-clamp-1">{b.serviceName}</p></div>
+                            <div><p className="text-[7px] font-black uppercase text-slate-400">Schedule</p><p className="text-[10px] font-bold">{b.date} / {b.time}</p></div>
+                            <div><p className="text-[7px] font-black uppercase text-slate-400">Status</p><p className="text-[10px] font-bold text-purple-600 uppercase">{b.status}</p></div>
+                            <div className="flex gap-2 md:col-span-2 justify-end">
+                              <button onClick={() => setEditingBooking(b)} className="p-2 bg-slate-200 rounded-md hover:text-purple-600 transition-colors"><FaEdit size={12} /></button>
+                              <button onClick={() => setDeleteConfirm(b)} className="p-2 bg-red-100 text-red-500 rounded-md hover:bg-red-500 hover:text-white transition-all"><FaTrash size={12} /></button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
