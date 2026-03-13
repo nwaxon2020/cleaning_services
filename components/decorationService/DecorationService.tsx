@@ -258,7 +258,7 @@ export default function DecorationServicesUi() {
         {selectedItem && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-2">
             <motion.div initial={{ y: 20 }} animate={{ y: 0 }} className="bg-white w-full max-w-4xl h-[95vh] rounded-md md:rounded-2xl overflow-hidden flex flex-col md:flex-row relative">
-              <button onClick={() => setSelectedItem(null)} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full z-10 hover:bg-red-500 hover:text-white transition-all"><FaTimes /></button>
+              <button onClick={() => setSelectedItem(null)} className="absolute top-8 md:top-4 right-4 p-2 bg-slate-100 rounded-full z-10 hover:bg-red-500 hover:text-white transition-all"><FaTimes /></button>
               
               <div className="hidden md:block w-1/3 bg-slate-50 relative">
                 <img src={selectedItem.imageUrl} className="w-full h-full object-cover" alt="" />
@@ -268,7 +268,8 @@ export default function DecorationServicesUi() {
                 </div>
               </div>
 
-              <div className="flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar flex flex-col">
+              {/* Model for Service Quote */}
+              <div className="flex-1 px-4 py-10 md:p-6 overflow-y-auto custom-scrollbar flex flex-col">
                 <h3 className="text-xl font-black uppercase italic mb-6">Service <span className="text-purple-600">Quote</span></h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">

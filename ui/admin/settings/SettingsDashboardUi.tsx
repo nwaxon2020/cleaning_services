@@ -2,17 +2,14 @@
 
 import Link from 'next/link';
 import { 
-  FaInfoCircle, FaPhone, FaEnvelope, FaMapMarkerAlt, 
-  FaUserTie, FaImages, FaHeartbeat, FaBriefcaseMedical,
-  FaPalette, FaUtensils, FaBuilding, FaHome
-} from 'react-icons/fa';
+  FaInfoCircle, FaPhone, FaImages } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
 const settingsCards = [
   {
     id: 'contact',
-    title: 'Contact Information',
-    description: 'Manage phone numbers, email addresses, office location and CEO contact details',
+    title: 'Site & Contact Settings',
+    description: 'Manage phone/email/office location/CEO contact/Site name/logo/Image sliders e.t.c',
     icon: FaPhone,
     color: 'from-green-500 to-green-600',
     href: '/admin/settings/contact'

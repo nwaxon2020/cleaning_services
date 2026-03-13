@@ -265,13 +265,13 @@ export default function RentalsServiceUi() {
       <AnimatePresence>
         {isCheckoutOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] flex items-center justify-center p-1 md:p-4">
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white w-full max-w-lg md:max-w-4xl h-[98vh] shadow-2xl p-1.5 py-6 md:p-6 flex flex-col rounded-md md:rounded-xl relative overflow-hidden">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white w-full max-w-lg md:max-w-4xl h-[98vh] shadow-2xl px-1.5 pt-8 md:p-6 flex flex-col rounded-md md:rounded-xl relative overflow-hidden">
               <div className="px-2 flex justify-between items-center mb-2">
                 <h2 className="text-xl font-black uppercase italic leading-none">Items <span className="text-blue-600">Selected</span></h2>
                 <button onClick={() => setIsCheckoutOpen(false)} className="p-3 bg-slate-100 rounded-full hover:bg-red-50 hover:text-red-500 transition-all"><FaTimes size={15} /></button>
               </div>
 
-              <div className="flex-1 overflow-y-auto md:pr-2 custom-scrollbar space-y-6">
+              <div className="flex-1 overflow-y-auto scrollbar-hide md:pr-2 space-y-6">
                 {/* Items selected for rentals */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
                   {Object.values(cart).map(item => {
