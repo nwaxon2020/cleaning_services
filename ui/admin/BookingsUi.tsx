@@ -4,56 +4,67 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db, auth } from '@/lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import RentalsBooking from '@/components/bookings/RentalsBooking';
-import CleaningBooking from '@/components/bookings/CleaningBooking';
-import DecorationBooking from '@/components/bookings/DecorationBooking';
+import RentalsBooking from '@/components/bookings/admin/RentalsBooking';
+import CleaningBooking from '@/components/bookings/admin/CleaningBooking';
+import DecorationBooking from '@/components/bookings/admin/DecorationBooking';
 
 export default function ServicesPageUi() {
   const [activeTab, setActiveTab] = useState('cleaning');
   const [isHydrated, setIsHydrated] = useState(false);
   const [user, setUser] = useState<any>(null);
   
-  // Notification States
   const [counts, setCounts] = useState<{ [key: string]: number }>({
     cleaning: 0,
     rentals: 0,
     decoration: 0
   });
 
-  // 1. Auth & Hydration
+  // 1. Auth & Initial Hydration
   useEffect(() => {
     const unsubAuth = auth.onAuthStateChanged((u) => setUser(u));
+    
     const savedTab = localStorage.getItem('lastVisitedServiceTab');
-    if (savedTab) setActiveTab(savedTab);
+    if (savedTab) {
+      setActiveTab(savedTab);
+    }
+    
     setIsHydrated(true);
     return () => unsubAuth();
   }, []);
 
-  // 2. Real-time Status-Based Notification Listeners
+  // 2. Real-time Notification Listeners with Index-Error Protection
   useEffect(() => {
     if (!user) return;
 
+    const ADMIN_UID = '0dHC0QPxyTRuMiCVhiktIOlg2603';
+    const isActuallyAdmin = user.uid === ADMIN_UID;
+
     const categories = [
       { id: 'cleaning', col: 'cleaning_orders', statusMatch: ["paid", "processing", "confirmed"] },
-      { id: 'rentals', col: 'renting_orders', statusMatch: ["paid", "processing", "confirmed"] },
-      { id: 'decoration', col: 'decoration_bookings', statusMatch: ["pending"] } 
+      { id: 'rentals', col: 'renting_orders', statusMatch: ["paid", "processing", "confirmed", "undelivered"] },
+      { id: 'decoration', col: 'decoration_bookings', statusMatch: ["pending"] }
     ];
 
     const unsubs = categories.map(cat => {
-      // Logic: If status matches, the bubble shows. If Admin changes status, bubble vanishes.
-      const q = query(
-        collection(db, cat.col), 
-        where("userId", "==", user.uid),
-        where("status", "in", cat.statusMatch)
-      );
+      // REAL-TIME QUERY:
+      // Admin listens to the whole collection. User listens to only their ID.
+      const q = isActuallyAdmin 
+        ? query(collection(db, cat.col)) 
+        : query(collection(db, cat.col), where("userId", "==", user.uid));
 
       return onSnapshot(q, (snap) => {
-        setCounts(prev => ({ ...prev, [cat.id]: snap.size }));
+        // This block runs EVERY time a document is added, deleted, or changed
+        const matchingDocs = snap.docs.filter(doc => 
+          cat.statusMatch.includes(doc.data().status)
+        );
+        
+        setCounts(prev => ({ ...prev, [cat.id]: matchingDocs.length }));
       });
     });
 
     return () => unsubs.forEach(unsub => unsub());
   }, [user]);
+
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
@@ -66,14 +77,13 @@ export default function ServicesPageUi() {
     { id: 'decoration', label: 'Decoration' },
   ];
 
-  const activeLabel = tabs.find(t => t.id === activeTab)?.label || "Bookings";
+  const activeLabel = tabs.find(t => t.id === activeTab)?.label || "Cleaning";
 
   if (!isHydrated) return <div className="min-h-screen bg-[#020617]" />;
 
   return (
     <div className="min-h-screen bg-[#020617] text-slate-100">
-      {/* FIXED HEADER */}
-      <header className="flex flex-col md:flex-row gap-2 md:gap-6 justify-center md:items-end p-4 md:p-8 pb-4 md:pb-6 text-center md:text-left border-b border-white/5 bg-[#020617]/50 backdrop-blur-xl sticky top-0 z-50">
+      <header className="flex flex-col md:flex-row gap-2 md:gap-6 justify-center md:items-end p-4 md:p-8 pb-4 md:pb-6 text-center md:text-left border-b border-white/5 bg-[#020617] backdrop-blur-xl sticky top-0 z-50">
         
         <h1 className="text-xl md:text-2xl font-black uppercase italic tracking-tighter text-white whitespace-nowrap">
           {activeLabel}<span className="text-blue-500"> Services</span>
@@ -93,13 +103,15 @@ export default function ServicesPageUi() {
               >
                 {tab.label}
 
+                {/* Individual AnimatePresence per tab fixes the visual behavior error */}
                 <AnimatePresence>
                   {counts[tab.id] > 0 && (
                     <motion.span
+                      key={`badge-${tab.id}`}
                       initial={{ scale: 0, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       exit={{ scale: 0, opacity: 0 }}
-                      className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-[#020617] shadow-lg"
+                      className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-[#020617] shadow-lg font-bold"
                     >
                       {counts[tab.id]}
                     </motion.span>
@@ -111,15 +123,14 @@ export default function ServicesPageUi() {
         </div>
       </header>
 
-      {/* DYNAMIC CONTENT AREA */}
-      <main className="max-w-7xl mx-auto px-4">
+      <main className="max-w-7xl mx-auto px-4 pt-6">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.4 }}
+            transition={{ duration: 0.3 }}
           >
             {activeTab === 'cleaning' && <CleaningBooking />}
             {activeTab === 'rentals' && <RentalsBooking />}
