@@ -210,7 +210,7 @@ const Navbar = () => {
 
   return (
     <nav className={`fixed left-0 right-0 z-[30] transition-all duration-500 ease-in-out ${scrolled ? "top-2 px-3" : "top-0 px-0"}`}>
-      <div className={`max-w-8xl mx-auto transition-all duration-500 px-3 md:px-10 flex justify-between items-center ${scrolled ? "bg-black/90 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl h-14 md:h-16" : "bg-black/20 md:bg-transparent h-16 md:h-20 border-transparent"}`}>
+      <div className={`max-w-8xl mx-auto transition-all duration-500 px-3 md:px-10 flex justify-between items-center ${scrolled ? "bg-black/90 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl h-14 md:h-16" : "bg-black/50 md:bg-transparent h-16 md:h-20 border-transparent"}`}>
         
         <Link href="/" className="group flex items-center gap-2 shrink-0">
           <img 
@@ -221,13 +221,13 @@ const Navbar = () => {
 
           <div className="flex flex-col justify-center">
             <span className={`text-[10px] md:text-xl font-black tracking-tighter leading-none uppercase`}>
-              <span className={isWhitePage ? "text-zinc-400" : "text-white"}>{firstWord}</span>
+              <span className={isWhitePage ? "text-zinc-200" : "text-white"}>{firstWord}</span>
               <span className="text-orange-500 group-hover:text-orange-400 transition-colors">{secondWord}</span>
             </span>
 
-            <div className="w-full h-[1px] bg-white/20 mt-1 mb-1 group-hover:bg-orange-500/50 transition-colors" />
+            <div className="w-full h-[1px] bg-white/30 mt-1 mb-1 group-hover:bg-orange-500/50 transition-colors" />
 
-            <span className="text-[8px] md:text-[10px] font-bold tracking-[0.1em] font-bold md:tracking-[0.2em] text-zinc-400 uppercase leading-none italic">
+            <span className="text-[8px] md:text-[10px] font-bold tracking-[0.1em] font-bold md:tracking-[0.2em] text-zinc-300 uppercase leading-none italic">
               {siteData?.siteSlogan || ""}
             </span>
           </div>

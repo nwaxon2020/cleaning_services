@@ -73,7 +73,7 @@ export default function DecorationServicesUi() {
   const [deleteConfirm, setDeleteConfirm] = useState<any | null>(null);
 
   const [formData, setFormData] = useState({
-    fullName: '', phone: '', email: '', address: '',
+    fullName: '', phone: '', email: '', address: '', postalCode: '',
     contactPreference: 'WhatsApp', quantity: 1, bidAmount: 0, 
     notes: '', date: '', time: ''
   });
@@ -121,23 +121,56 @@ export default function DecorationServicesUi() {
   const handleGetQuote = async () => {
     if (!user) return setShowAuthOverlay(true);
     
+    // 1. Clean and Format Postal Code
+    const rawPostal = (formData.postalCode || "").trim().toUpperCase();
+    const cleanPostal = rawPostal.replace(/\s+/g, ''); 
+    
     const { fullName, phone, email, address, date, time, bidAmount, quantity } = formData;
     
-    // REQUIREMENT: Strict validation check before any submission
-    if (!fullName.trim() || !phone.trim() || !email.trim() || !address.trim() || !date || !time || bidAmount <= 0) {
-      return toast.error("Please fill in all required fields accurately");
+    // 2. Validation
+    if (!fullName.trim() || !phone.trim() || !email.trim() || !address.trim() || !cleanPostal || !date || !time || bidAmount <= 0) {
+      return toast.error("Please fill in all required fields");
+    }
+
+    // 3. Bristol Check (Functional Logic)
+    // We keep this here so the user gets a nice toast error instead of a silent Firebase denial
+    if (!cleanPostal.startsWith('BS')) {
+      return toast.error("Currently, we only serve Bristol area (BS postcodes)");
     }
     
+    // 4. Price Logic
     const [minRate, maxRate] = selectedItem.priceRange.split('-').map(Number);
-    if (bidAmount < (minRate * quantity)) return toast.error(`Offer too low. Min is £${minRate * quantity}`);
-    if (bidAmount > (maxRate * quantity)) return toast.error(`Offer too high. Max is £${maxRate * quantity}`);
+    const minAllowed = minRate * quantity;
+    const maxAllowed = maxRate * quantity;
+
+    if (bidAmount < minAllowed) return toast.error(`Offer too low. Min is £${minAllowed}`);
+    if (bidAmount > maxAllowed) return toast.error(`Offer too high. Max is £${maxAllowed}`);
+
+    const estimateRangeString = `£${minAllowed.toLocaleString()} - £${maxAllowed.toLocaleString()}`;
 
     setIsSubmitting(true);
+
     try {
-      // REQUIREMENT: Only interact with database, EmailJS logic removed
+      // 5. Data Submission
+      console.log("Submitting with userId:", user.uid);
+      console.log("Postal code:", rawPostal);
+      console.log("Postal code starts with BS?", rawPostal.startsWith('BS'));
+
+      // We send 'userId' so the 'isOwner' rule in your Firebase Rules works for 'My Quotations'
       await addDoc(collection(db, "decoration_bookings"), {
-        userId: user.uid,
-        ...formData,
+        userId: user.uid,              // CRITICAL: Links the doc to the user
+        fullName: fullName.trim(),
+        phone: phone.trim(),
+        email: email.trim(),
+        address: address.trim(),
+        postalCode: rawPostal,         // Saved as "BS1 1AA"
+        date: date,
+        time: time,
+        bidAmount: Number(bidAmount),  // Ensure it's a number, not a string
+        quantity: Number(quantity),
+        contactPreference: formData.contactPreference,
+        notes: formData.notes || "",
+        estimateRange: estimateRangeString, 
         serviceId: selectedItem.id,
         serviceName: selectedItem.name,
         status: 'pending',
@@ -146,34 +179,43 @@ export default function DecorationServicesUi() {
 
       toast.success("Quote request submitted!");
       setSelectedItem(null);
-    } catch (e) { 
-      toast.error("Submission failed"); 
+    } catch (e: any) { 
+      console.error("FIREBASE ERROR:", e.code, e.message);
+      toast.error(`Submission failed: ${e.code === 'permission-denied' ? 'Check Account Status' : 'Check Connection'}`); 
     } finally { 
       setIsSubmitting(false); 
     }
   };
 
   const handleUpdateBooking = async () => {
-    if (!editingBooking) return;
+    if (!editingBooking || !user) return;
     try {
-      await updateDoc(doc(db, "decoration_bookings", editingBooking.id), {
+      const bookingRef = doc(db, "decoration_bookings", editingBooking.id);
+      await updateDoc(bookingRef, {
         phone: editingBooking.phone,
         address: editingBooking.address,
+        postalCode: editingBooking.postalCode.toUpperCase(),
         date: editingBooking.date,
         time: editingBooking.time
       });
       toast.success("Updated successfully");
       setEditingBooking(null);
-    } catch (e) { toast.error("Update failed"); }
+    } catch (e) { 
+      console.error("Update Error:", e);
+      toast.error("Update failed: Permission Denied"); 
+    }
   };
 
   const handleDeleteBooking = async () => {
-    if (!deleteConfirm) return;
+    if (!deleteConfirm || !user) return;
     try {
       await deleteDoc(doc(db, "decoration_bookings", deleteConfirm.id));
       toast.success("Request cancelled");
       setDeleteConfirm(null);
-    } catch (e) { toast.error("Failed to cancel"); }
+    } catch (e) { 
+      console.error("Delete Error:", e);
+      toast.error("Delete failed: Permission Denied"); 
+    }
   };
 
   return (
@@ -282,7 +324,7 @@ export default function DecorationServicesUi() {
                     </div> 
                   </div>
 
-                  {/* CONTACT FORM DESIGN FROM RENTALS */}
+                  {/* CONTACT FORM DESIGN FOR QUOTES */}
                   <div className="bg-slate-50/50 p-3 md:p-5 rounded-md border border-slate-200/60 shadow-inner space-y-4">
                     <div className="flex items-center gap-2 mb-2 px-1">
                       <div className="h-2 w-2 bg-purple-600 rounded-full animate-pulse"></div>
@@ -290,32 +332,76 @@ export default function DecorationServicesUi() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="relative group md:col-span-2">
+                      {/* SHARED ADDRESS & POSTCODE ROW */}
+                      <div className="relative group md:col-span-1">
                         <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-purple-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">Event Address</label>
                         <div className="relative">
-                          <input type="text" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} placeholder="Full event location" className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none focus:border-purple-500" />
+                          <input 
+                            type="text" 
+                            value={formData.address} 
+                            onChange={e => setFormData({...formData, address: e.target.value})} 
+                            placeholder="Full location" 
+                            className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none focus:border-purple-500" 
+                          />
                           <FaMapMarkerAlt className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 opacity-50" size={14} />
                         </div>
                       </div>
 
+                      {/* FIXED BRISTOL POSTAL CODE FIELD - SAME ROW AS ADDRESS */}
+                      <div className="relative group md:col-span-1">
+                        <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-orange-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">Postal Code (Bristol Only)</label>
+                        <input 
+                          type="text" 
+                          value={formData.postalCode || ''} 
+                          onChange={(e) => {
+                            const value = e.target.value.toUpperCase();
+                            setFormData({...formData, postalCode: value});
+                          }} 
+                          placeholder="e.g. BS1 1AA" 
+                          className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-50"
+                        />
+                        {formData.postalCode && !formData.postalCode.startsWith('BS') && (
+                          <p className="text-[9px] font-bold text-red-500 mt-1 ml-1">⚠️ We only serve Bristol area (BS postcodes)</p>
+                        )}
+                      </div>
+
                       <div className="relative group">
                         <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-purple-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">Full Name</label>
-                        <input type="text" value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none focus:border-purple-500" />
+                        <input 
+                          type="text" 
+                          value={formData.fullName} 
+                          onChange={e => setFormData({...formData, fullName: e.target.value})} 
+                          className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none focus:border-purple-500" 
+                        />
                       </div>
 
                       <div className="relative group">
                         <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-purple-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">WhatsApp / Phone</label>
-                        <input type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none focus:border-purple-500" />
+                        <input 
+                          type="tel" 
+                          value={formData.phone} 
+                          onChange={e => setFormData({...formData, phone: e.target.value})} 
+                          className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none focus:border-purple-500" 
+                        />
                       </div>
 
                       <div className="relative group">
                         <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-purple-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">Email Address</label>
-                        <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none focus:border-purple-500" />
+                        <input 
+                          type="email" 
+                          value={formData.email} 
+                          onChange={e => setFormData({...formData, email: e.target.value})} 
+                          className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none focus:border-purple-500" 
+                        />
                       </div>
 
                       <div className="relative group">
                         <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-purple-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">Preferred Contact Method</label>
-                        <select value={formData.contactPreference} onChange={e => setFormData({...formData, contactPreference: e.target.value})} className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none appearance-none focus:border-purple-500">
+                        <select 
+                          value={formData.contactPreference} 
+                          onChange={e => setFormData({...formData, contactPreference: e.target.value})} 
+                          className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none appearance-none focus:border-purple-500"
+                        >
                           <option value="WhatsApp">▼ Send via WhatsApp</option>
                           <option value="Phone Call">▼ Direct Phone Call</option>
                           <option value="Email">▼ Email Notification</option>
@@ -325,7 +411,7 @@ export default function DecorationServicesUi() {
                   </div>
                 </div>
 
-                <button onClick={handleGetQuote} disabled={isSubmitting} className="w-full mt-8 bg-slate-900 text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-purple-600 transition-all shadow-xl">
+                <button onClick={handleGetQuote} disabled={isSubmitting} className="flex justify-center items-center w-full mt-8 bg-slate-900 text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-purple-600 transition-all shadow-xl">
                     {isSubmitting ? <FaSpinner className="animate-spin" /> : 'Submit Quote Request'}
                 </button>
               </div>
@@ -338,12 +424,13 @@ export default function DecorationServicesUi() {
       <AnimatePresence>
         {showCheckBooking && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[150] bg-slate-900/90 flex items-center justify-center p-2">
-            <div className="bg-white w-full max-w-4xl h-[90vh] rounded-3xl p-6 md:p-10 flex flex-col relative overflow-hidden">
+            <div className="bg-white w-full max-w-4xl h-[90vh] rounded-xl px-4 py-6 md:p-10 flex flex-col relative overflow-hidden">
               <button onClick={() => setShowCheckBooking(false)} className="absolute top-6 right-6 text-slate-400 hover:text-red-500 transition-all"><FaTimes size={20} /></button>
-              <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+              <div className="flex-1 overflow-y-auto custom-scrollbar md:pr-2">
                 <h2 className="text-xl font-black uppercase italic mb-6 border-b pb-2">My <span className="text-purple-600">Quotations</span></h2>
+                {/* Each Card in My Quotes */}
                 {viewableBookings.length > 0 ? viewableBookings.map(b => (
-                  <div key={b.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl mb-4 shadow-sm">
+                  <div key={b.id} className="p-4 bg-slate-50 border border-slate-200 md:rounded-xl mb-4 shadow-sm">
                     {editingBooking?.id === b.id ? (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                           <input value={editingBooking.phone} onChange={e => setEditingBooking({...editingBooking, phone: e.target.value})} className="p-3 border rounded-xl text-xs" />
@@ -356,6 +443,7 @@ export default function DecorationServicesUi() {
                           <p className="text-[8px] font-black uppercase text-slate-400">Order Ref: {b.id.slice(0,8).toUpperCase()}</p>
                           <h4 className="text-xs font-black uppercase text-slate-800">{b.serviceName}</h4>
                           <p className="text-[10px] text-slate-500">Offer: £{b.bidAmount} • {b.date} at {b.time}</p>
+                          <p className="text-[10px] text-slate-400 italic">Estimate was: {b.estimateRange}</p>
                         </div>
                         <div className="flex items-center gap-3">
                           <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-full ${b.status === 'pending' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>{b.status}</span>

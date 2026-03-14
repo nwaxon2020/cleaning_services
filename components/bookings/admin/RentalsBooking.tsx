@@ -87,7 +87,7 @@ export default function RentalAdmin() {
   };
 
   return (
-    <div className="space-y-8 pt-4 pb-6 md:p-4 bg-[#020617] min-h-screen text-slate-100 relative">
+    <div className="mx-auto max-w-5xl space-y-8 p-4 pb-6 md:p-4 bg-[#020617] min-h-screen text-slate-100 relative">
       
       {/* HEADER WITH LIVE COUNTER */}
       <div className="flex justify-center md:justify-end items-end border-b border-white/10 pb-2">
@@ -176,24 +176,25 @@ export default function RentalAdmin() {
                 <h2 className="font-black uppercase italic tracking-tighter">Transaction Ledger (Closed)</h2>
                 <button onClick={() => setShowHistory(false)} className="text-black hover:text-red-500"><FaTimes /></button>
             </div>
-            <div className="overflow-y-auto p-4 space-y-3">
+            <div className="overflow-y-auto px-3 py-5 md:p-4 space-y-3">
                 {[...orders.filter(o => o.status === 'delivered'), ...cancelledOrders].map((item: any) => (
-                    <div key={item.id} className={`p-4 rounded-xl border border-gray-300 flex items-center justify-between ${item.status === 'delivered' ? 'bg-emerald-500/5 border-emerald-100' : 'bg-gray-200 border-red-100 opacity-60'}`}>
-                        <div className="flex items-center gap-4">
-                            <div className={item.status === 'delivered' ? 'text-emerald-800' : 'text-red-600'}>
-                                {item.status === 'delivered' ? <FaCheckCircle /> : <FaTimes />}
-                            </div>
-                            <div>
-                                <p className="text-black text-[10px] font-black uppercase">{item.fullName || "Cancelled Order"}</p>
-                                <p className="text-[9px] text-black">£{item.total?.toFixed(2) || item.pricePaid?.toFixed(2)} — {item.status || 'CANCELLED'}</p>
-                            </div>
-                        </div>
+                    <div key={item.id} className={`p-4 rounded-xl border border-gray-300 flex flex-col gap-3 md:flex-row md:items-center md:justify-between ${item.status === 'delivered' ? 'bg-emerald-500/5 border-emerald-100' : 'bg-gray-200 border-red-100 opacity-60'}`}>
+                      <div className="flex items-center gap-4">
+                          <div className={item.status === 'delivered' ? 'text-emerald-800' : 'text-red-600'}>
+                              {item.status === 'delivered' ? <FaCheckCircle /> : <FaTimes />}
+                          </div>
+                          <div>
+                              <p className="text-black text-[10px] font-black uppercase">{item.fullName || "Cancelled Order"}</p>
+                              <p className="text-[9px] text-black">£{item.total?.toFixed(2) || item.pricePaid?.toFixed(2)} — {item.status || 'CANCELLED'}</p>
+                          </div>
+                      </div>
 
-                        {/* VIEW RECEIPT BUTTON - ONLY FOR DELIVERED */}
+                      <div className='flex justify-between gap-3'>
+                       {/* VIEW RECEIPT BUTTON - ONLY FOR DELIVERED */}
                         {item.status === 'delivered' && (
                             <button 
                             onClick={() => window.open(`/receipts/${item.id}`)}
-                            className="flex items-center gap-2 bg-black text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase text-blue-400 hover:bg-blue-500 transition-all"
+                            className="flex items-center gap-2 bg-black text-white px-3 py-1.5 rounded md:rounded-lg text-[9px] font-black uppercase text-blue-400 hover:bg-blue-500 transition-all"
                             >
                             <FaChartLine size={10} /> View Receipt
                             </button>
@@ -205,6 +206,7 @@ export default function RentalAdmin() {
                         >
                             <FaTrash size={12}/>
                         </button>
+                      </div>
                     </div>
                 ))}
             </div>

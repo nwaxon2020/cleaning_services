@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 // Importing individual components
 import CleaningService from '@/components/cleaningServices/CleaningServicesUi';
-import RentalsService from '@/components/rentalsService/RentalsService';
+import RentalsService from '@/components/rentalsService/RentalService';
 import DecorationService from '@/components/decorationService/DecorationService';
 import HealthService from '@/components/healthService/HealthService';
 

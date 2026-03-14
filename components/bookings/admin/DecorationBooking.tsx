@@ -8,11 +8,12 @@ import {
 } from 'firebase/firestore';
 import { 
   FaWhatsapp, FaEnvelope, FaPhone, FaMapMarkerAlt, 
-  FaCalendarAlt, FaClock, FaCheckCircle, FaTrash, FaUser,
-  FaGavel, FaLayerGroup, FaLock, FaCircle
+  FaCalendarAlt, FaClock, FaCheckCircle, FaUser,
+  FaGavel, FaLayerGroup, FaLock, FaMapPin, FaTag,
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { div } from 'framer-motion/client';
 
 export default function AdminDecorationBookings() {
   const [bookings, setBookings] = useState<any[]>([]);
@@ -23,7 +24,7 @@ export default function AdminDecorationBookings() {
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const [passcode, setPasscode] = useState("");
 
-  const ADMIN_PASSCODE = "1234"; 
+  const ADMIN_PASSCODE = process.env.NEXT_PUBLIC_ADMIN_PIN; 
 
   useEffect(() => {
     const q = query(collection(db, "decoration_bookings"), orderBy("createdAt", "desc"));
@@ -63,17 +64,25 @@ export default function AdminDecorationBookings() {
 
   const filteredBookings = bookings.filter(b => filter === 'all' ? true : b.status === filter);
 
+  if(loading){
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="w-12 h-12 rounded-full animate-spin border-2 border-t-transparent border-orange-500"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen relative">
-      <div className="max-w-7xl mx-auto">
+    <div className="w-full p-4 pt-2 md:p-8 md:pt-4 bg-slate-50 min-h-screen relative">
+      <div className="max-w-5xl mx-auto">
         
         <header className="flex flex-col md:flex-row justify-center md:justify-end items-start md:items-center mb-8 gap-4">
-          <div className="flex bg-white border rounded-xl p-1 shadow-sm">
+          <div className="w-full flex justify-between md:justify-around bg-white border rounded-sm md:rounded-xl p-2 md:p-1 shadow-sm">
             {['pending', 'approved', 'cancelled', 'all'].map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${filter === f ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
+                className={`px-2 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${filter === f ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
               >
                 {f}
               </button>
@@ -90,7 +99,7 @@ export default function AdminDecorationBookings() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 key={booking.id}
-                className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm"
+                className="mb-8 md:mb-0 bg-white border border-slate-200 md:rounded-xl overflow-hidden shadow-sm"
               >
                 <div className="flex flex-col md:flex-row">
                   <div className={`w-full md:w-2 ${booking.status === 'pending' ? 'bg-orange-400' : booking.status === 'approved' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
@@ -126,6 +135,10 @@ export default function AdminDecorationBookings() {
                       <p className="text-xs font-bold text-slate-500 flex items-center gap-2 mt-2">
                         <FaMapMarkerAlt className="text-red-500"/> {booking.address}
                       </p>
+                      {/* ADDED: Postal Code Display */}
+                      <p className="text-xs font-bold text-purple-600 flex items-center gap-2 mt-1">
+                        <FaMapPin className="text-purple-500"/> {booking.postalCode}
+                      </p>
                       <div className="flex gap-2 mt-4">
                         <a href={`https://wa.me/${booking.phone?.replace(/\D/g,'')}`} target="_blank" className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-600 hover:text-white transition-all"><FaWhatsapp size={14}/></a>
                         <a href={`tel:${booking.phone}`} className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all"><FaPhone size={14}/></a>
@@ -133,17 +146,28 @@ export default function AdminDecorationBookings() {
                       </div>
                     </div>
 
-                    {/* Column 2: The Deal */}
+                    {/* Column 2: The Deal - UPDATED with postal code removed from here and estimate added */}
                     <div className="space-y-1 bg-slate-50 p-4 rounded-xl border border-slate-100">
                       <div className="flex items-center gap-2 text-slate-400 mb-2">
                         <FaGavel size={10}/> <span className="text-[9px] font-black uppercase tracking-widest">The Deal</span>
                       </div>
                       <h4 className="text-xs font-black text-purple-600 uppercase">{booking.serviceName}</h4>
+                      
+                      {/* UPDATED: Customer Offer with smaller amount and label */}
                       <div className="flex items-baseline gap-1 mt-2">
-                        <span className="text-2xl font-black text-slate-900">£{booking.bidAmount}</span>
+                        <span className="text-xl font-black text-slate-900">£{booking.bidAmount}</span>
+                        <span className="text-[8px] font-black text-slate-400 uppercase ml-1">customer's offer</span>
                       </div>
-                      <p className="text-[10px] font-black text-slate-500 uppercase flex items-center gap-1">
-                        <FaLayerGroup size={10}/> Qty: {booking.quantity}
+                      
+                      {/* ADDED: Estimate Range Display */}
+                      {booking.estimateRange && (
+                        <p className="text-xs font-black text-emerald-600 flex items-center gap-1 mt-2">
+                          <FaTag size={12} className="text-emerald-500"/> Estimate: <span className='text-red-800'>{booking.estimateRange}</span>
+                        </p>
+                      )}
+                      
+                      <p className="text-xs font-black text-slate-500 uppercase flex items-center gap-1 mt-2">
+                        <FaLayerGroup size={15}/> Room / m² : <span className='text-black'>{booking.quantity}</span>
                       </p>
                     </div>
 
@@ -170,7 +194,7 @@ export default function AdminDecorationBookings() {
                           </button>
                           <button 
                             onClick={() => updateStatus(booking.id, 'cancelled')}
-                            className="w-full py-3 bg-white border-2 border-slate-100 text-slate-400 hover:text-orange-500 hover:border-orange-100 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all"
+                            className="w-full py-3 bg-white border-2 border-slate-300 text-slate-600 hover:text-orange-500 hover:border-orange-100 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all"
                           >
                             Cancel Request
                           </button>
@@ -187,7 +211,7 @@ export default function AdminDecorationBookings() {
                       )}
                       
                       <div className="mt-2 text-center">
-                        <span className="text-[8px] font-black text-slate-300 uppercase">Ref: {booking.id.slice(-6).toUpperCase()}</span>
+                        <span className="text-[8px] font-black text-slate-400 uppercase">Ref: {booking.id.slice(-6).toUpperCase()}</span>
                       </div>
                     </div>
                   </div>
@@ -204,11 +228,11 @@ export default function AdminDecorationBookings() {
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowDeleteModal(false)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
             <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="relative bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl text-center">
-              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-6"><FaLock size={24} /></div>
+              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-xl flex items-center justify-center mx-auto mb-6"><FaLock size={24} /></div>
               <h2 className="text-xl font-black text-slate-900 uppercase tracking-tighter mb-2">Wipe Record?</h2>
-              <input type="password" value={passcode} onChange={(e) => setPasscode(e.target.value)} placeholder="••••" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 text-center text-2xl font-black tracking-[1em] focus:border-red-500 focus:outline-none transition-all mb-6" autoFocus />
+              <input type="password" value={passcode} onChange={(e) => setPasscode(e.target.value)} placeholder="••••" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 text-gray-900 text-center text-xl font-black tracking-[1em] focus:border-red-500 focus:outline-none transition-all mb-6" autoFocus />
               <div className="flex gap-3">
-                <button onClick={() => setShowDeleteModal(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 transition-all">Cancel</button>
+                <button onClick={() => setShowDeleteModal(false)} className="flex-1 py-3 bg-slate-100 text-slate-500 border border-gray-400 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 transition-all">Cancel</button>
                 <button onClick={confirmDeletion} className="flex-1 py-4 bg-red-500 text-white rounded-xl font-black uppercase text-[10px] tracking-widest">Wipe Data</button>
               </div>
             </motion.div>

@@ -31,15 +31,20 @@ export default function RentalsServiceUi() {
   const [viewableOrders, setViewableOrders] = useState<any[]>([]);
   const [showAuthOverlay, setShowAuthOverlay] = useState(false);
   
+  // Delete Cancelled Orders or Delivered Orders
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<any>(null);
+
   // State for Cancellation
   const [orderToCancel, setOrderToCancel] = useState<any>(null);
 
-  // Form State
+  // Form State - ADDED postalCode
   const [formData, setFormData] = useState({
     fullName: '', 
     phone: '', 
     email: '',
     address: '',
+    postalCode: '', // ADDED THIS LINE
     contactPreference: 'WhatsApp'
   });
 
@@ -274,51 +279,63 @@ export default function RentalsServiceUi() {
                 
                 <ShippingInfo totalPrice={totalPrice} />
 
-                {/* CONTACT FORM */}
-                <div className="bg-slate-50/50 p-5 rounded-md border border-slate-200/60 shadow-inner space-y-4">
-                  <div className="my-2 flex items-center gap-2 px-1">
-                    <div className="h-2 w-2 bg-blue-600 rounded-full animate-pulse"></div>
+                {/* CONTACT FORM DESIGN FROM RENTALS */}
+                <div className="bg-slate-50/50 p-3 md:p-5 rounded-md border border-slate-200/60 shadow-inner space-y-4">
+                  <div className="flex items-center gap-2 mb-2 px-1">
+                    <div className="h-2 w-2 bg-purple-600 rounded-full animate-pulse"></div>
                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Delivery & Contact Info</h3>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="relative group md:col-span-2">
-                      <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-blue-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">Delivery Address</label>
+                    {/* SHARED ADDRESS & POSTCODE ROW */}
+                    <div className="relative group md:col-span-1">
+                      <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-purple-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">Event Address</label>
                       <div className="relative">
-                        <input type="text" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} placeholder="Enter full delivery address" className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-50" />
+                        <input type="text" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} placeholder="Full location" className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none focus:border-purple-500" />
                         <FaMapMarkerAlt className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 opacity-50" size={14} />
                       </div>
                     </div>
 
-                    <div className="relative group">
-                      <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-blue-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">Full Name</label>
-                      <input type="text" value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} placeholder="e.g. John Doe" className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-50" />
+                    {/* FIXED BRISTOL POSTAL CODE FIELD - SAME ROW AS ADDRESS */}
+                    <div className="relative group md:col-span-1">
+                      <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-orange-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">Postal Code (Bristol Only)</label>
+                      <input 
+                        type="text" 
+                        value={formData.postalCode || ''} 
+                        onChange={(e) => {
+                          const value = e.target.value.toUpperCase();
+                          setFormData({...formData, postalCode: value});
+                        }} 
+                        placeholder="e.g. BS1 1AA" 
+                        className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-50"
+                      />
+                      {formData.postalCode && !formData.postalCode.startsWith('BS') && (
+                        <p className="text-[9px] font-bold text-red-500 mt-1 ml-1">⚠️ We only serve Bristol area (BS postcodes)</p>
+                      )}
                     </div>
 
                     <div className="relative group">
-                      <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-blue-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">WhatsApp / Phone</label>
-                      <div className="relative">
-                        <input type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="+44..." className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-50" />
-                        <FaWhatsapp className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-500 opacity-50" size={16} />
-                      </div>
+                      <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-purple-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">Full Name</label>
+                      <input type="text" value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none focus:border-purple-500" />
                     </div>
 
                     <div className="relative group">
-                      <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-blue-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">Email Address</label>
-                      <div className="relative">
-                        <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="your@email.com" className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-50" />
-                        <FaEnvelope className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-500 opacity-50" size={14} />
-                      </div>
+                      <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-purple-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">WhatsApp / Phone</label>
+                      <input type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none focus:border-purple-500" />
                     </div>
 
                     <div className="relative group">
-                      <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-blue-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">Contact Preference</label>
-                      <select value={formData.contactPreference} onChange={e => setFormData({...formData, contactPreference: e.target.value})} className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none appearance-none">
+                      <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-purple-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">Email Address</label>
+                      <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none focus:border-purple-500" />
+                    </div>
+
+                    <div className="relative group">
+                      <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-purple-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">Preferred Contact Method</label>
+                      <select value={formData.contactPreference} onChange={e => setFormData({...formData, contactPreference: e.target.value})} className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none appearance-none focus:border-purple-500">
                         <option value="WhatsApp">▼ Send via WhatsApp</option>
                         <option value="Phone Call">▼ Direct Phone Call</option>
                         <option value="Email">▼ Email Notification</option>
                       </select>
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><FaPhone size={12} /></div>
                     </div>
                   </div>
                 </div>
@@ -328,8 +345,12 @@ export default function RentalsServiceUi() {
                 <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
                   <div><span className="text-slate-500 font-black uppercase text-[10px] block mb-1">Estimated Total</span><span className="text-2xl md:text-3xl font-black text-slate-900 italic">£{totalPrice.toFixed(2)}</span></div>
                   <button onClick={() => { 
-                    if(!formData.fullName.trim() || !formData.phone.trim() || !formData.email.trim() || !formData.address.trim()) {
+                    // UPDATED VALIDATION - include postalCode and Bristol check
+                    if(!formData.fullName.trim() || !formData.phone.trim() || !formData.email.trim() || !formData.address.trim() || !formData.postalCode?.trim()) {
                         return toast.error("Please fill in all contact and delivery fields");
+                    }
+                    if(!formData.postalCode?.toUpperCase().startsWith('BS')) {
+                        return toast.error("We only serve Bristol area (BS postcodes)");
                     }
                     if(!user) return setShowAuthOverlay(true); 
                     setShowPaymentModal(true); 
@@ -364,13 +385,16 @@ export default function RentalsServiceUi() {
 
                         <div className="flex flex-col items-end gap-2">
                             <div className="flex items-center gap-2">
-                                <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full ${order.status === 'paid' ? 'bg-green-100 text-green-600' : order.status === 'cancelled' ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
+                                <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full ${order.status === 'paid' ? 'bg-green-100 text-green-600' : order.status === 'cancelled' ? 'bg-red-100 text-red-600' : order.status === 'delivered' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'}`}>
                                     {order.status}
                                 </span>
-                                {/* DELETE BUTTON - Only appears for cancelled orders */}
-                                {order.status === 'cancelled' && (
+                                {/* DELETE BUTTON - Appears for cancelled AND delivered orders */}
+                                {(order.status === 'cancelled' || order.status === 'delivered') && (
                                     <button 
-                                        onClick={() => handleDeleteOrder(order.id)}
+                                        onClick={() => {
+                                          setOrderToDelete(order);
+                                          setShowDeleteConfirm(true);
+                                        }}
                                         className="p-2 bg-red-50 text-red-500 hover:bg-red-100 rounded-full transition-all"
                                         title="Delete from view"
                                     >
@@ -378,7 +402,7 @@ export default function RentalsServiceUi() {
                                     </button>
                                 )}
                             </div>
-                            {/* CANCEL BUTTON */}
+                            {/* CANCEL BUTTON - Only for non-cancelled, non-delivered orders */}
                             {order.status !== 'cancelled' && order.status !== 'delivered' && (
                                 <button 
                                     onClick={() => setOrderToCancel(order)}
@@ -398,6 +422,47 @@ export default function RentalsServiceUi() {
           </motion.div>
         )}
       </AnimatePresence>
+
+{/* DELETE CONFIRMATION MODAL */}
+<AnimatePresence>
+  {showDeleteConfirm && orderToDelete && (
+    <div className="fixed inset-0 z-[350] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }} 
+        animate={{ scale: 1, opacity: 1 }} 
+        exit={{ scale: 0.9, opacity: 0 }}
+        className="bg-white p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl"
+      >
+        <FaExclamationTriangle className="text-red-500 text-4xl mx-auto mb-4" />
+        <h3 className="font-black uppercase text-sm mb-2">Delete Order?</h3>
+        <p className="text-[10px] text-slate-500 mb-6 uppercase tracking-widest font-bold">
+          This will permanently remove this {orderToDelete.status} order from your view.
+        </p>
+        <div className="flex gap-3">
+          <button 
+            onClick={() => {
+              setShowDeleteConfirm(false);
+              setOrderToDelete(null);
+            }} 
+            className="flex-1 py-3 bg-slate-100 rounded-xl font-black text-[10px] uppercase hover:bg-slate-200 transition-all"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={() => {
+              handleDeleteOrder(orderToDelete.id);
+              setShowDeleteConfirm(false);
+              setOrderToDelete(null);
+            }} 
+            className="flex-1 py-3 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase hover:bg-red-700 transition-all"
+          >
+            Yes, Delete
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  )}
+</AnimatePresence>
 
       {/* CANCELLATION OVERLAY DIV */}
       <AnimatePresence>
