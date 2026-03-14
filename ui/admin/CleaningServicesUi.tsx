@@ -182,10 +182,8 @@ export default function AdminServicesUi() {
           )}
         </AnimatePresence>
 
-        <div>
-          {/* --- LEFT COLUMN: MASTER CONFIGS --- */}
-          <div className="lg:col-span-4 space-y-6">
-            
+         {/* --- LEFT COLUMN: MASTER CONFIGS (Full width on mobile, 4/12 on desktop) --- */}
+          <div className="my-8 lg:col-span-4 space-y-6 order-2 lg:order-1">
             {/* MASTER AREAS */}
             <section className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
               <button onClick={() => setShowAreaForm(!showAreaForm)} className="w-full flex justify-between items-center p-4 hover:bg-slate-50 transition-colors">
@@ -194,15 +192,15 @@ export default function AdminServicesUi() {
               </button>
               {showAreaForm && (
                 <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-                  <div className="flex gap-2 mb-4">
-                    <input value={areaName} onChange={(e)=>setAreaName(e.target.value)} placeholder="e.g. Bathroom" className="flex-1 px-3 py-2 text-sm border rounded-lg outline-none" />
-                    <button onClick={async() => { if(areaName){ await addDoc(collection(db, "areas"), {label: areaName, createdAt: serverTimestamp()}); setAreaName(''); }}} className="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold">Add</button>
+                  <div className="flex flex-col sm:flex-row gap-2 mb-4">
+                    <input value={areaName} onChange={(e)=>setAreaName(e.target.value)} placeholder="e.g. Bathroom" className="flex-1 px-3 py-3 lg:py-2 text-sm border rounded-lg outline-none" />
+                    <button onClick={async() => { if(areaName){ await addDoc(collection(db, "areas"), {label: areaName, createdAt: serverTimestamp()}); setAreaName(''); }}} className="bg-slate-900 text-white px-4 py-3 lg:py-2 rounded-lg text-xs font-bold">Add</button>
                   </div>
                   <div className="flex flex-wrap gap-2 max-h-60 overflow-y-auto">
                     {areas.map(a => (
-                      <div key={a.id} className="px-2 py-1 bg-white border border-slate-200 rounded-md text-[11px] font-bold flex items-center gap-2">
+                      <div key={a.id} className="px-3 py-2 lg:px-2 lg:py-1 bg-white border border-slate-200 rounded-md text-[11px] font-bold flex items-center gap-2">
                         {a.label} 
-                        <FaTrash onClick={()=>setDeleteTarget({id: a.id, type:'area', name: a.label})} className="text-slate-300 hover:text-red-500 cursor-pointer"/>
+                        <FaTrash onClick={()=>setDeleteTarget({id: a.id, type:'area', name: a.label})} className="text-slate-300 hover:text-red-500 cursor-pointer text-sm lg:text-[11px]"/>
                       </div>
                     ))}
                   </div>
@@ -211,23 +209,25 @@ export default function AdminServicesUi() {
             </section>
 
             {/* MASTER PRICES */}
-            <section className="mb-6 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            <section className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
               <button onClick={() => setShowPriceForm(!showPriceForm)} className="w-full flex justify-between items-center p-4 hover:bg-slate-50 transition-colors">
                 <span className="font-bold text-xs uppercase tracking-wider text-slate-700">Price Points</span>
                 <FaTags className="text-slate-400" />
               </button>
               {showPriceForm && (
                 <div className="p-4 border-t border-slate-100 bg-slate-50/50 space-y-4">
-                  <div className="flex gap-2">
-                    <input value={priceItemName} onChange={(e)=>setPriceItemName(e.target.value)} placeholder="Name" className="flex-1 px-3 py-2 text-sm border rounded-lg outline-none" />
-                    <input type="number" value={priceItemValue} onChange={(e)=>setPriceItemValue(e.target.value)} placeholder="£" className="w-20 px-3 py-2 text-sm border rounded-lg outline-none" />
-                    <button onClick={async() => { if(priceItemName && priceItemValue){ await addDoc(collection(db, "service_prices"), {label: priceItemName, value: parseFloat(priceItemValue), createdAt: serverTimestamp()}); setPriceItemName(''); setPriceItemValue(''); }}} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold">Add</button>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input value={priceItemName} onChange={(e)=>setPriceItemName(e.target.value)} placeholder="Name" className="flex-1 px-3 py-3 lg:py-2 text-sm border rounded-lg outline-none" />
+                    <div className="flex gap-2">
+                      <input type="number" value={priceItemValue} onChange={(e)=>setPriceItemValue(e.target.value)} placeholder="£" className="flex-1 sm:w-20 px-3 py-3 lg:py-2 text-sm border rounded-lg outline-none" />
+                      <button onClick={async() => { if(priceItemName && priceItemValue){ await addDoc(collection(db, "service_prices"), {label: priceItemName, value: parseFloat(priceItemValue), createdAt: serverTimestamp()}); setPriceItemName(''); setPriceItemValue(''); }}} className="bg-blue-600 text-white px-6 py-3 lg:py-2 rounded-lg text-xs font-bold">Add</button>
+                    </div>
                   </div>
                   <div className="space-y-2 max-h-60 overflow-y-auto">
                     {priceList.map(p => (
-                      <div key={p.id} className="p-2 bg-white border border-slate-200 rounded-lg flex justify-between items-center text-xs font-bold">
+                      <div key={p.id} className="p-3 lg:p-2 bg-white border border-slate-200 rounded-lg flex justify-between items-center text-xs font-bold">
                         <span>{p.label} - £{p.value}</span>
-                        <FaTrash onClick={()=>setDeleteTarget({id: p.id, type:'price', name: p.label})} className="text-slate-300 hover:text-red-500 cursor-pointer"/>
+                        <FaTrash onClick={()=>setDeleteTarget({id: p.id, type:'price', name: p.label})} className="text-slate-300 hover:text-red-500 cursor-pointer text-sm"/>
                       </div>
                     ))}
                   </div>
@@ -236,51 +236,51 @@ export default function AdminServicesUi() {
             </section>
           </div>
 
-          {/* --- RIGHT COLUMN: SERVICE EDITOR --- */}
-          <div className="lg:col-span-8 space-y-8">
-            <div ref={formRef} className={`bg-white border-2 rounded-xl transition-all duration-300 px-3 py-5 md:p-6 ${editingId ? 'border-orange-500 shadow-xl' : 'border-slate-100 shadow-sm'}`}>
-              <div className="flex justify-between items-start mb-8 pb-4 border-b border-slate-50">
-                <h2 className="text-xl font-bold text-slate-900">{editingId ? 'Update Service' : 'New Service Offering'}</h2>
-                {editingId && <button onClick={cancelEdit} className="text-xs font-bold text-red-500 uppercase flex items-center gap-1 hover:bg-red-50 px-3 py-1.5 rounded-md"><FaTimes /> Cancel</button>}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+          {/* --- RIGHT COLUMN: SERVICE EDITOR (Full width on mobile, 8/12 on desktop) --- */}
+          <div className="lg:col-span-8 space-y-8 order-1 lg:order-2">
+            <div ref={formRef} className={`bg-white border-2 rounded-2xl lg:rounded-xl transition-all duration-300 px-4 py-6 lg:p-6 ${editingId ? 'border-orange-500 shadow-xl' : 'border-slate-100 shadow-sm'}`}>
+              <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-8 pb-4 border-b border-slate-50">
+                <h2 className="text-lg lg:text-xl font-black text-slate-900 uppercase tracking-tight">{editingId ? 'Update Service' : 'New Service Offering'}</h2>
+                {editingId && <button onClick={cancelEdit} className="text-[10px] font-black bg-red-50 text-red-500 uppercase flex items-center gap-1 px-3 py-2 rounded-lg"><FaTimes /> Cancel Edit</button>}
               </div>
 
-              <div className="max-h-[750px] overflow-y-auto grid md:grid-cols-2 gap-8">
+              <div className="lg:max-h-[750px] lg:overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Basic Info */}
                 <div className="space-y-4">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-400 uppercase">Service Title</label>
-                    <input value={serviceName} onChange={(e)=>setServiceName(e.target.value)} placeholder="e.g. Deep Clean" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg" />
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Service Title</label>
+                    <input value={serviceName} onChange={(e)=>setServiceName(e.target.value)} placeholder="e.g. Deep Clean" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white transition-all outline-none" />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-400 uppercase">Description</label>
-                    <textarea value={description} onChange={(e)=>setDescription(e.target.value)} placeholder="What's included..." className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg h-24" />
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Description</label>
+                    <textarea value={description} onChange={(e)=>setDescription(e.target.value)} placeholder="What's included..." className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl h-32 lg:h-24 outline-none focus:bg-white transition-all" />
                   </div>
 
                   {/* Task Management */}
-                  <div className="space-y-3">
-                    <label className="text-[11px] font-bold text-slate-400 uppercase">Create Tasks</label>
+                  <div className="space-y-3 pt-4">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Step-by-Step Tasks</label>
                     <div className="flex gap-2">
-                      <input value={currentTaskName} onChange={(e)=>setCurrentTaskName(e.target.value)} placeholder="New task..." className="flex-1 px-3 py-2 text-sm border rounded-lg" />
-                      <button onClick={addLocalTask} className="bg-slate-900 text-white px-4 rounded-lg"><FaPlus/></button>
+                      <input value={currentTaskName} onChange={(e)=>setCurrentTaskName(e.target.value)} placeholder="New task..." className="flex-1 px-4 py-3 text-sm border rounded-xl outline-none" />
+                      <button onClick={addLocalTask} className="bg-slate-900 text-white px-5 rounded-xl"><FaPlus/></button>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-4 mt-4">
                       {localTasks.map((task, idx) => (
-                        <div key={idx} className="p-4 border border-slate-200 rounded-xl bg-slate-50/30">
+                        <div key={idx} className="p-4 border border-slate-200 rounded-2xl bg-slate-50/30">
                           <div className="flex justify-between items-center mb-3">
-                            <span className="font-bold text-sm text-slate-800">{idx + 1}. {task.name}</span>
-                            <FaTrash onClick={() => setLocalTasks(localTasks.filter((_, i) => i !== idx))} className="text-red-400 cursor-pointer hover:text-red-600"/>
+                            <span className="font-black text-xs text-slate-800 uppercase tracking-tight">{idx + 1}. {task.name}</span>
+                            <FaTrash onClick={() => setLocalTasks(localTasks.filter((_, i) => i !== idx))} className="text-red-400 cursor-pointer hover:text-red-600 p-1" size={18}/>
                           </div>
                           
-                          {/* Mapping appears only when task exists */}
                           <div className="space-y-2">
                             <p className="text-[9px] font-black uppercase text-slate-400 tracking-tighter">Link to Areas:</p>
-                            <div className="flex flex-wrap gap-1">
+                            <div className="flex flex-wrap gap-1.5">
                               {areas.map(a => (
                                 <button 
                                   key={a.id} 
                                   onClick={() => toggleAreaForTask(idx, a.id)}
-                                  className={`px-2 py-1 rounded text-[10px] font-bold border transition-all ${task.areaIds.includes(a.id) ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-slate-500 border-slate-200'}`}
+                                  className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase border transition-all ${task.areaIds.includes(a.id) ? 'bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-500/20' : 'bg-white text-slate-500 border-slate-200'}`}
                                 >
                                   {a.label}
                                 </button>
@@ -291,117 +291,74 @@ export default function AdminServicesUi() {
                       ))}
                     </div>
                   </div>
-
-                  {/* Additional Costs Section */}
-                  <div className="space-y-3 mt-6 pt-4 border-t border-slate-100">
-                    <label className="text-[11px] font-bold text-slate-400 uppercase flex items-center gap-2">
-                      <FaCoins className="text-green-600" /> Additional Costs
-                    </label>
-                    <div className="flex gap-2">
-                      <input 
-                        value={newCostName} 
-                        onChange={(e) => setNewCostName(e.target.value)} 
-                        placeholder="Cost name (e.g. Extra hour)" 
-                        className="flex-1 px-3 py-2 text-sm border rounded-lg" 
-                      />
-                      <input 
-                        type="number" 
-                        value={newCostPrice} 
-                        onChange={(e) => setNewCostPrice(e.target.value)} 
-                        placeholder="£" 
-                        className="w-20 px-3 py-2 text-sm border rounded-lg" 
-                      />
-                      <button onClick={addAdditionalCost} className="bg-green-600 text-white px-4 rounded-lg hover:bg-green-700">
-                        <FaPlus/>
-                      </button>
-                    </div>
-
-                    {/* Display Additional Costs */}
-                    <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
-                      {additionalCosts.map((cost, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm text-slate-800">{cost.name}</span>
-                            <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded">
-                              £{cost.price}
-                            </span>
-                          </div>
-                          <FaTrash 
-                            onClick={() => removeAdditionalCost(idx)} 
-                            className="text-red-400 cursor-pointer hover:text-red-600"
-                          />
-                        </div>
-                      ))}
-                      {additionalCosts.length === 0 && (
-                        <p className="text-xs text-slate-400 italic text-center py-4">No additional costs added yet</p>
-                      )}
-                    </div>
-                  </div>
                 </div>
 
                 {/* Pricing & Media */}
                 <div className="space-y-6">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-400 uppercase">Select Price Options</label>
-                    <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Price Options</label>
+                    <div className="grid grid-cols-1 gap-2 max-h-64 lg:max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                       {priceList.map(p => (
-                        <button key={p.id} onClick={() => setSelectedPriceIds(prev => prev.includes(p.id) ? prev.filter(i => i !== p.id) : [...prev, p.id])} className={`px-3 py-2 rounded-lg border text-left flex justify-between items-center transition-all ${selectedPriceIds.includes(p.id) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-slate-200 text-slate-600'}`}>
-                          <span className="text-xs font-bold">{p.label} - £{p.value}</span>
+                        <button key={p.id} onClick={() => setSelectedPriceIds(prev => prev.includes(p.id) ? prev.filter(i => i !== p.id) : [...prev, p.id])} className={`px-4 py-3 rounded-xl border text-left flex justify-between items-center transition-all ${selectedPriceIds.includes(p.id) ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/20' : 'bg-white border-slate-200 text-slate-600'}`}>
+                          <span className="text-xs font-black uppercase">{p.label} <span className="ml-2 opacity-60">£{p.value}</span></span>
                           {selectedPriceIds.includes(p.id) && <FaCheckSquare />}
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-[11px] font-bold text-slate-400 uppercase block">Imagery</label>
+                  {/* Imagery Section */}
+                  <div className="space-y-3 pt-4">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Service Imagery</label>
                     <AnimatePresence>
                       {(imagePreview || imageUrl) && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="aspect-video w-full bg-slate-100 rounded-xl overflow-hidden relative border border-slate-200">
+                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="aspect-video w-full bg-slate-100 rounded-2xl overflow-hidden relative border border-slate-200 mb-4">
                           <img src={imagePreview || imageUrl} className="w-full h-full object-cover" alt="Preview" />
-                          <button onClick={()=>{setImagePreview(null); setImageUrl(''); setImageFile(null);}} className="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full shadow-lg"><FaTimes /></button>
+                          <button onClick={()=>{setImagePreview(null); setImageUrl(''); setImageFile(null);}} className="absolute top-3 right-3 bg-red-600 text-white p-2 rounded-full shadow-xl hover:bg-red-700 transition-colors"><FaTimes size={12} /></button>
                         </motion.div>
                       )}
                     </AnimatePresence>
-                    <div className="flex gap-2">
-                      <button onClick={()=>setImageType('url')} className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border-2 ${imageType === 'url' ? 'bg-slate-900 text-white border-slate-900' : 'text-slate-400'}`}>URL</button>
-                      <button onClick={()=>setImageType('file')} className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border-2 ${imageType === 'file' ? 'bg-slate-900 text-white border-slate-900' : 'text-slate-400'}`}>FILE</button>
+                    <div className="flex gap-2 p-1 bg-slate-100 rounded-xl">
+                      <button onClick={()=>setImageType('url')} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase transition-all ${imageType === 'url' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400'}`}>URL Link</button>
+                      <button onClick={()=>setImageType('file')} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase transition-all ${imageType === 'file' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400'}`}>Upload File</button>
                     </div>
                     {imageType === 'url' ? 
-                      <input value={imageUrl || ""} onChange={(e)=>{setImageUrl(e.target.value); setImagePreview(e.target.value);}} placeholder="Image Link" className="w-full p-2 bg-slate-50 border rounded-lg text-xs" /> : 
-                      <input type="file" onChange={handleFileChange} className="w-full p-2 bg-white border border-dashed rounded-lg text-xs" />
+                      <input value={imageUrl || ""} onChange={(e)=>{setImageUrl(e.target.value); setImagePreview(e.target.value);}} placeholder="Paste Image Link here..." className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:bg-white" /> : 
+                      <div className="relative group">
+                        <input type="file" onChange={handleFileChange} className="w-full p-8 bg-white border-2 border-dashed border-slate-200 rounded-2xl text-xs text-center file:hidden" />
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-slate-400 font-bold uppercase text-[10px]">Click to Browse Files</div>
+                      </div>
                     }
                   </div>
                 </div>
               </div>
 
-              <button disabled={uploading} onClick={handleAddService} className="mt-10 w-full py-4 bg-blue-900 text-white rounded-lg font-bold uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-blue-700 transition-colors shadow-lg">
-                {uploading ? <FaSpinner className="animate-spin" /> : <><FaSave/> {editingId ? 'Save Changes' : 'Create Service'}</>}
+              <button disabled={uploading} onClick={handleAddService} className="mt-10 w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-black transition-all shadow-xl shadow-slate-900/20 active:scale-[0.98]">
+                {uploading ? <FaSpinner className="animate-spin" /> : <><FaSave size={14}/> {editingId ? 'Update Service' : 'Publish Service'}</>}
               </button>
             </div>
 
-            {/* LIVE DISPLAY */}
-            <div>
+            {/* LIVE CATALOG DISPLAY */}
+            <div className="pt-10">
               <div className="flex items-center gap-4 mb-8">
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900">Live <span className="text-orange-600">Catalog</span></h1>
+                <h1 className="text-xl lg:text-2xl font-black uppercase tracking-tighter text-slate-900">Live <span className="text-orange-600">Catalog</span></h1>
                 <div className="h-px flex-1 bg-slate-200"></div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                 {services.map((s) => (
-                  <div key={s.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm group hover:border-orange-500 transition-all">
+                  <div key={s.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm group hover:border-orange-500 hover:shadow-xl transition-all duration-300">
                     <div className="aspect-video bg-slate-100 relative">
                       <img src={s.image} className="w-full h-full object-cover" alt="" />
-                      <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                        <button onClick={() => handleEditInit(s)} className="p-3 bg-white text-slate-900 rounded-lg hover:scale-110"><FaEdit/></button>
-                        <button onClick={() => setDeleteTarget({id: s.id, type: 'service', name: s.name})} className="p-3 bg-red-600 text-white rounded-lg hover:scale-110"><FaTrash/></button>
+                      <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-3 backdrop-blur-[2px]">
+                        <button onClick={() => handleEditInit(s)} className="p-4 bg-white text-slate-900 rounded-xl hover:scale-110 active:scale-95 transition-transform"><FaEdit/></button>
+                        <button onClick={() => setDeleteTarget({id: s.id, type: 'service', name: s.name})} className="p-4 bg-red-600 text-white rounded-xl hover:scale-110 active:scale-95 transition-transform"><FaTrash/></button>
                       </div>
                     </div>
-                    <div className="p-5">
-                      <h3 className="font-bold text-slate-900 text-lg">{s.name}</h3>
-                      <div className="flex gap-4 mt-4 text-[10px] font-black uppercase text-slate-400">
+                    <div className="p-6">
+                      <h3 className="font-black text-slate-900 text-base uppercase tracking-tight truncate">{s.name}</h3>
+                      <div className="flex flex-wrap gap-y-2 gap-x-4 mt-4 text-[9px] font-black uppercase text-slate-400">
                         <span className="flex items-center gap-1.5"><FaTools className="text-orange-500"/> {s.tasks?.length || 0} Tasks</span>
-                        <span className="flex items-center gap-1.5"><FaTags className="text-blue-500"/> {s.priceItemIds?.length || 0} Prices</span>
-                        <span className="flex items-center gap-1.5"><FaCoins className="text-green-500"/> {s.additionalCosts?.length || 0} Extras</span>
+                        <span className="flex items-center gap-1.5"><FaTags className="text-blue-500"/> {s.priceItemIds?.length || 0} Options</span>
                       </div>
                     </div>
                   </div>
