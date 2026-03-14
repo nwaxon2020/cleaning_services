@@ -308,123 +308,176 @@ export default function FaqEditorUi() {
             </section>
 
             {/* Questions */}
-            <section className="bg-white border border-slate-200 md:rounded-xl shadow-sm py-5 md:p-6 mb-10">
-            <h2 className="text-center md:text-left text-xl font-black uppercase mb-6">Questions & Answers</h2>
+            <section className="bg-white border border-slate-200 md:rounded-xl shadow-sm p-3 md:p-6 mb-10">
+              <h2 className="text-center md:text-left text-xl font-black uppercase mb-6">Questions & Answers</h2>
 
-            <div className="grid gap-4 mb-8 p-4 bg-slate-50 rounded-lg">
+              <div className="grid gap-4 mb-8 p-4 bg-slate-50 rounded-lg">
                 <select
-                value={newQuestion.categoryId}
-                onChange={(e) => setNewQuestion({...newQuestion, categoryId: e.target.value})}
-                className="p-3 bg-white border border-slate-200 rounded-lg"
+                  value={newQuestion.categoryId}
+                  onChange={(e) => setNewQuestion({...newQuestion, categoryId: e.target.value})}
+                  className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm"
                 >
-                <option value="">Select Category</option>
-                {categories.map(cat => (
+                  <option value="">Select Category</option>
+                  {categories.map(cat => (
                     <option key={cat.id} value={cat.id}>{cat.name}</option>
-                ))}
+                  ))}
                 </select>
+                
                 <input
-                value={newQuestion.q}
-                onChange={(e) => setNewQuestion({...newQuestion, q: e.target.value})}
-                placeholder="Question"
-                className="p-3 bg-white border border-slate-200 rounded-lg"
+                  value={newQuestion.q}
+                  onChange={(e) => setNewQuestion({...newQuestion, q: e.target.value})}
+                  placeholder="Question"
+                  className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm"
                 />
+                
                 <textarea
-                value={newQuestion.a}
-                onChange={(e) => setNewQuestion({...newQuestion, a: e.target.value})}
-                placeholder="Answer"
-                rows={3}
-                className="p-3 bg-white border border-slate-200 rounded-lg"
+                  value={newQuestion.a}
+                  onChange={(e) => setNewQuestion({...newQuestion, a: e.target.value})}
+                  placeholder="Answer"
+                  rows={3}
+                  className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm"
                 />
-                <div className="grid md:grid-cols-2 gap-4">
-                <input
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input
                     value={newQuestion.link}
                     onChange={(e) => setNewQuestion({...newQuestion, link: e.target.value})}
                     placeholder="Link URL (optional)"
-                    className="p-3 bg-white border border-slate-200 rounded-lg"
-                />
-                <input
+                    className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm"
+                  />
+                  <input
                     value={newQuestion.linkText}
                     onChange={(e) => setNewQuestion({...newQuestion, linkText: e.target.value})}
                     placeholder="Link Text (optional)"
-                    className="p-3 bg-white border border-slate-200 rounded-lg"
-                />
+                    className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm"
+                  />
                 </div>
-                <div className="flex gap-4">
-                <button 
+                
+                <div className="flex flex-col md:flex-row gap-3">
+                  <button 
                     onClick={editingQuestion ? updateQuestion : addQuestion} 
-                    className="flex-1 py-3 bg-orange-600 text-white rounded-lg font-bold flex items-center justify-center gap-2"
-                >
+                    className="w-full md:flex-1 py-3 bg-orange-600 text-white rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-orange-700 transition-colors"
+                  >
                     <FaPlus /> {editingQuestion ? 'Update Question' : 'Add Question'}
-                </button>
-                {editingQuestion && (
+                  </button>
+                  {editingQuestion && (
                     <button 
-                    onClick={() => {
+                      onClick={() => {
                         setEditingQuestion(null);
                         setNewQuestion({ q: '', a: '', categoryId: '', link: '', linkText: '' });
-                    }} 
-                    className="px-6 bg-slate-500 text-white rounded-lg"
+                      }} 
+                      className="w-full md:w-auto px-6 py-3 bg-slate-500 text-white rounded-lg font-bold hover:bg-slate-600 transition-colors"
                     >
-                    Cancel
+                      Cancel
                     </button>
-                )}
+                  )}
                 </div>
-            </div>
+              </div>
 
-            {/* Questions List by Category */}
-            {categories.map(cat => {
-                const catQuestions = questions.filter(q => q.categoryId === cat.id).sort((a, b) => a.order - b.order);
-                if (catQuestions.length === 0) return null;
+              {/* Questions List by Category */}
+              <div className="space-y-4">
+                {categories.map(cat => {
+                  const catQuestions = questions.filter(q => q.categoryId === cat.id).sort((a, b) => a.order - b.order);
+                  if (catQuestions.length === 0) return null;
 
-                return (
-                <div key={cat.id} className="mb-8">
-                    <button
-                    onClick={() => setExpandedCategory(expandedCategory === cat.id ? null : cat.id)}
-                    className="w-full flex items-center justify-between p-4 bg-slate-100 rounded-lg mb-2"
-                    >
-                    <h3 className="font-bold text-lg">{cat.name} ({catQuestions.length})</h3>
-                    <FaChevronDown className={`transition-transform ${expandedCategory === cat.id ? 'rotate-180' : ''}`} />
-                    </button>
+                  return (
+                    <div key={cat.id} className="border border-slate-200 rounded-lg overflow-hidden">
+                      <button
+                        onClick={() => setExpandedCategory(expandedCategory === cat.id ? null : cat.id)}
+                        className="w-full flex items-center justify-between p-4 bg-slate-100 hover:bg-slate-200 transition-colors"
+                      >
+                        <h3 className="font-bold text-base md:text-lg">{cat.name} <span className="text-sm text-slate-500 ml-2">({catQuestions.length})</span></h3>
+                        <FaChevronDown className={`text-slate-500 transition-transform ${expandedCategory === cat.id ? 'rotate-180' : ''}`} />
+                      </button>
 
-                    <AnimatePresence>
-                    {expandedCategory === cat.id && (
-                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-2 overflow-hidden">
-                        {catQuestions.map((q, index) => (
-                            <div key={q.id} className="p-4 bg-white border border-slate-200 rounded-lg">
-                            <div className="flex justify-between items-start mb-2">
-                                <div className="flex items-center gap-4">
-                                <span className="text-xs font-bold text-slate-400 w-6">{index + 1}</span>
-                                <h4 className="font-bold text-sm">{q.q}</h4>
+                      <AnimatePresence>
+                        {expandedCategory === cat.id && (
+                          <motion.div 
+                            initial={{ opacity: 0, height: 0 }} 
+                            animate={{ opacity: 1, height: 'auto' }} 
+                            exit={{ opacity: 0, height: 0 }} 
+                            className="divide-y divide-slate-100"
+                          >
+                            {catQuestions.map((q, index) => (
+                              <div key={q.id} className="p-4 hover:bg-slate-50 transition-colors">
+                                {/* Mobile Layout */}
+                                <div className="block md:hidden">
+                                  <div className="flex items-start justify-between mb-2">
+                                    <div className="flex items-start gap-2 flex-1">
+                                      <span className="text-xs font-bold text-slate-400 bg-slate-100 w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                        {index + 1}
+                                      </span>
+                                      <h4 className="font-bold text-sm text-slate-800 flex-1">{q.q}</h4>
+                                    </div>
+                                  </div>
+                                  
+                                  <p className="text-sm text-slate-600 mt-2 ml-8">{q.a}</p>
+                                  
+                                  {q.link && (
+                                    <div className="mt-2 ml-8">
+                                      <span className="text-xs text-orange-600 break-words">
+                                        Link: {q.linkText || q.link}
+                                      </span>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Mobile Action Buttons */}
+                                  <div className="flex items-center justify-end gap-3 mt-3 pt-2 border-t border-slate-100">
+                                    <button onClick={() => moveQuestion(q.id, cat.id, 'up')} disabled={index === 0} className="p-2 text-slate-400 hover:text-orange-600 disabled:opacity-30 disabled:hover:text-slate-400">
+                                      <FaArrowUp size={12} />
+                                    </button>
+                                    <button onClick={() => moveQuestion(q.id, cat.id, 'down')} disabled={index === catQuestions.length-1} className="p-2 text-slate-400 hover:text-orange-600 disabled:opacity-30 disabled:hover:text-slate-400">
+                                      <FaArrowDown size={12} />
+                                    </button>
+                                    <button onClick={() => editQuestion(q)} className="p-2 text-blue-600 hover:text-blue-800">
+                                      <FaEdit size={12} />
+                                    </button>
+                                    <button onClick={() => setDeleteTarget({id: q.id, type: 'question', name: q.q})} className="p-2 text-red-600 hover:text-red-800">
+                                      <FaTrash size={12} />
+                                    </button>
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                <button onClick={() => moveQuestion(q.id, cat.id, 'up')} disabled={index === 0} className="p-1 text-slate-400 hover:text-orange-600 disabled:opacity-30">
-                                    <FaArrowUp size={10} />
-                                </button>
-                                <button onClick={() => moveQuestion(q.id, cat.id, 'down')} disabled={index === catQuestions.length-1} className="p-1 text-slate-400 hover:text-orange-600 disabled:opacity-30">
-                                    <FaArrowDown size={10} />
-                                </button>
-                                <button onClick={() => editQuestion(q)} className="p-1 text-blue-600 hover:text-blue-800">
-                                    <FaEdit size={10} />
-                                </button>
-                                <button onClick={() => setDeleteTarget({id: q.id, type: 'question', name: q.q})} className="p-1 text-red-600 hover:text-red-800">
-                                    <FaTrash size={10} />
-                                </button>
+
+                                {/* Desktop Layout */}
+                                <div className="hidden md:block">
+                                  <div className="flex justify-between items-start mb-2">
+                                    <div className="flex items-center gap-4">
+                                      <span className="text-xs font-bold text-slate-400 w-6">{index + 1}</span>
+                                      <h4 className="font-bold text-sm">{q.q}</h4>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <button onClick={() => moveQuestion(q.id, cat.id, 'up')} disabled={index === 0} className="p-1 text-slate-400 hover:text-orange-600 disabled:opacity-30">
+                                        <FaArrowUp size={10} />
+                                      </button>
+                                      <button onClick={() => moveQuestion(q.id, cat.id, 'down')} disabled={index === catQuestions.length-1} className="p-1 text-slate-400 hover:text-orange-600 disabled:opacity-30">
+                                        <FaArrowDown size={10} />
+                                      </button>
+                                      <button onClick={() => editQuestion(q)} className="p-1 text-blue-600 hover:text-blue-800">
+                                        <FaEdit size={10} />
+                                      </button>
+                                      <button onClick={() => setDeleteTarget({id: q.id, type: 'question', name: q.q})} className="p-1 text-red-600 hover:text-red-800">
+                                        <FaTrash size={10} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <p className="text-sm text-slate-600 mt-2 pl-10">{q.a}</p>
+                                  {q.link && (
+                                    <div className="mt-2 pl-10">
+                                      <span className="text-xs text-orange-600">Link: {q.linkText || q.link}</span>
+                                    </div>
+                                  )}
                                 </div>
-                            </div>
-                            <p className="text-sm text-slate-600 mt-2 pl-10">{q.a}</p>
-                            {q.link && (
-                                <div className="mt-2 pl-10">
-                                <span className="text-xs text-orange-600">Link: {q.linkText || q.link}</span>
-                                </div>
-                            )}
-                            </div>
-                        ))}
-                        </motion.div>
-                    )}
-                    </AnimatePresence>
-                </div>
-                );
-            })}
+                              </div>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  );
+                })}
+              </div>
             </section>
+
         </div>
 
         <div>

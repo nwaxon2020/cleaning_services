@@ -9,8 +9,8 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { 
-  FaPlus, FaTrash, FaImage, FaGlobe, FaCloudUploadAlt, 
-  FaSpinner, FaTimes, FaArrowUp, FaArrowDown, FaQuoteLeft, FaMagic, FaSave
+  FaPlus, FaTrash, FaGlobe, FaCloudUploadAlt, 
+  FaSpinner, FaArrowUp, FaArrowDown, FaQuoteLeft, FaMagic, FaSave
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -211,7 +211,7 @@ export default function SlideshowEditor() {
             {slides.map((slide, index) => (
               <div key={slide.id} className="relative group aspect-square bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
                 <img src={slide.url || ""} className="w-full h-full object-cover" alt="" />
-                <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                <div className="absolute inset-0 bg-black/70 md:opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
                   <button onClick={() => moveSlide(slide.id, 'up')} disabled={index === 0} className="p-1.5 bg-white rounded-lg disabled:opacity-30"><FaArrowUp size={10} /></button>
                   <button onClick={() => moveSlide(slide.id, 'down')} disabled={index === slides.length-1} className="p-1.5 bg-white rounded-lg disabled:opacity-30"><FaArrowDown size={10} /></button>
                   <button onClick={() => setDeleteTarget(slide.id)} className="p-1.5 bg-red-600 text-white rounded-lg"><FaTrash size={10} /></button>

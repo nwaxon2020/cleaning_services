@@ -292,7 +292,7 @@ export default function AboutPreviewEditorUi() {
                   <div className="w-2 h-2 rounded-full bg-orange-500" />
                   <span className="text-sm text-slate-700">{feature}</span>
                 </div>
-                <button onClick={() => removeFeature(index)} className="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => removeFeature(index)} className="text-red-500 hover:text-red-700 md:opacity-0 group-hover:opacity-100 transition-opacity">
                   <FaTrash size={14} />
                 </button>
               </motion.div>

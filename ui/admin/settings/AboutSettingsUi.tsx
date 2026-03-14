@@ -339,7 +339,7 @@ export default function AboutEditor() {
               <div key={slide.id} className="relative group border border-slate-200 rounded-xl overflow-hidden bg-slate-50 shadow-sm">
                 <div className="relative aspect-video">
                     <img src={slide.url} className="w-full h-full object-cover" alt="" />
-                    <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <div className="absolute inset-0 bg-black/70 md:opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         <button onClick={() => handleEditSlide(slide)} className="p-2 bg-white rounded-lg text-slate-900"><FaEdit size={14} /></button>
                         <button onClick={() => setDeleteTarget({id: slide.id, type: 'about_hero_slides', name: slide.title})} className="p-2 bg-red-600 text-white rounded-lg"><FaTrash size={14} /></button>
                     </div>
