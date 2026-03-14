@@ -173,11 +173,11 @@ export default function HealthServicesEditorUi() {
   };
 
   return (
-    <div className="mx-auto p-4 md:p-10 bg-white min-h-screen text-slate-900 pb-32">
-      <h1 className="text-3xl font-black italic uppercase mb-8">Health <span className="text-green-600">Admin Console</span></h1>
+    <div className="mx-auto p-3 md:p-10 bg-white min-h-screen text-slate-900 pb-32">
+      <h1 className="text-2xl md:text-3xl font-black italic uppercase mb-8">Health <span className="text-green-600">Admin Console</span></h1>
 
       {/* SECTION 1: CONTACT INFORMATION */}
-      <div className="p-6 bg-green-900 text-white rounded-2xl shadow-xl mb-10 border-b-4 border-green-600">
+      <div className="p-3 md:p-6 bg-green-900 text-white rounded-xl shadow-xl mb-10 border-b-4 border-green-600">
         <h3 className="text-xs font-black uppercase italic mb-6 flex items-center gap-2 text-green-300">Contact & Location</h3>
         <div className="grid md:grid-cols-2 gap-4">
           <div className="space-y-1">
@@ -204,7 +204,7 @@ export default function HealthServicesEditorUi() {
 
       <div className="grid lg:grid-cols-2 gap-10">
         {/* SECTION 2: GLOBAL SLIDER */}
-        <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200">
+        <div className="bg-slate-50 p-3 md:p-6 rounded-xl border border-slate-200">
           <h3 className="text-xs font-black uppercase italic mb-6 flex items-center gap-2 text-slate-500"><FaImage/> Slider Image Gallery</h3>
           
           <div className="flex gap-2 mb-6">
@@ -226,18 +226,18 @@ export default function HealthServicesEditorUi() {
             {sliderImages.map((url, i) => (
               <div key={i} className="relative aspect-video rounded-xl overflow-hidden border border-slate-300 shadow-sm group">
                 <img src={url} className="w-full h-full object-cover" />
-                <button onClick={() => removeSlide(url)} className="absolute top-1 right-1 bg-red-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><FaTrash size={10}/></button>
+                <button onClick={() => removeSlide(url)} className="absolute top-1 right-1 bg-red-600 text-white p-1.5 rounded-full md:opacity-0 group-hover:opacity-100 transition-opacity"><FaTrash size={10}/></button>
               </div>
             ))}
           </div>
         </div>
 
         {/* SECTION 3: CATEGORY MANAGEMENT */}
-        <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200">
+        <div className="bg-slate-50 p-3 md:p-6 rounded-xl border border-slate-200">
           <h3 className="text-xs font-black uppercase italic mb-6 flex items-center gap-2 text-slate-500"><FaLayerGroup/> Health Categories</h3>
-          <div className="flex gap-2 mb-6">
+          <div className="flex flex-col md:flex-row gap-2 mb-6">
             <input value={newCatName} onChange={(e)=>setNewCatName(e.target.value)} placeholder="New Category Name..." className="flex-1 p-3 bg-white border rounded-xl text-sm outline-none focus:border-green-500" />
-            <button onClick={addCategory} className="bg-slate-900 text-white px-6 rounded-xl font-bold uppercase text-[10px] hover:bg-black transition-all">Add</button>
+            <button onClick={addCategory} className="bg-slate-900 text-white py-3 px-6 rounded-xl font-bold uppercase text-[10px] hover:bg-black transition-all">Add</button>
           </div>
           <div className="flex flex-wrap gap-2">
             {categories.map(c => (
@@ -251,7 +251,7 @@ export default function HealthServicesEditorUi() {
       </div>
 
       {/* SECTION 4: SERVICE EDITOR */}
-      <div ref={formRef} className="mt-10 p-8 bg-green-50 border-2 border-green-100 rounded-[2.5rem] shadow-inner">
+      <div ref={formRef} className="mt-10 p-3 md:p-6 bg-green-50 border-2 border-green-100 rounded-xl shadow-inner">
         <h3 className="text-xl font-black uppercase italic mb-8 flex items-center gap-3">
             <FaBriefcaseMedical className="text-green-600"/> {editingServiceId ? 'Modify Service' : 'Create New Service'}
         </h3>
@@ -286,7 +286,7 @@ export default function HealthServicesEditorUi() {
             </div>
         </div>
 
-        <button onClick={handleAddService} disabled={loading} className="mt-10 w-full py-5 bg-green-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 hover:bg-green-700 transition-all">
+        <button onClick={handleAddService} disabled={loading} className="mt-10 text-sm md:text-base w-full py-5 bg-green-600 text-white rounded-xl md:rounded-2xl font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 hover:bg-green-700 transition-all">
             {loading ? <FaSpinner className="animate-spin" /> : <><FaSave/> {editingServiceId ? 'Update Service' : 'Launch Service'}</>}
         </button>
       </div>
