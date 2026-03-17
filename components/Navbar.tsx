@@ -34,7 +34,7 @@ const Navbar = () => {
 
   const ADMIN_ID = process.env.NEXT_PUBLIC_ADMIN_ID; 
 
-  const whitePages = ["/about", "/faq", "/login", "/services"];
+  const whitePages = ["/about", "/faq", "/login", "/join-us", "/services"];
   const isWhitePage = whitePages.includes(pathname);
 
   useEffect(() => {
@@ -196,6 +196,7 @@ const Navbar = () => {
     { name: "About Us", href: "/about" },
     { name: "FAQ", href: "/faq" },
     { name: "Location", href: "/location" },
+    { name: "Join Us", href: "/join-us" },
   ];
 
   const isAboutActive = aboutLinks.some(link => link.href === pathname);
@@ -221,13 +222,13 @@ const Navbar = () => {
 
           <div className="flex flex-col justify-center">
             <span className={`text-[10px] md:text-xl font-black tracking-tighter leading-none uppercase`}>
-              <span className={isWhitePage ? "text-zinc-200" : "text-white"}>{firstWord}</span>
+              <span className={isWhitePage ? "text-zinc-300" : "text-white"}>{firstWord}</span>
               <span className="text-orange-500 group-hover:text-orange-400 transition-colors">{secondWord}</span>
             </span>
 
             <div className="w-full h-[1px] bg-white/30 mt-1 mb-1 group-hover:bg-orange-500/50 transition-colors" />
 
-            <span className="text-[8px] md:text-[10px] font-bold tracking-[0.1em] font-bold md:tracking-[0.2em] text-zinc-300 uppercase leading-none italic">
+            <span className="text-[8px] md:text-[10px] font-bold tracking-[0.1em] font-bold md:tracking-[0.2em] text-zinc-400 uppercase leading-none italic">
               {siteData?.siteSlogan || ""}
             </span>
           </div>

@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, getDocs,} from 'firebase/firestore';
-import { FaCalendarCheck, FaStar, FaUsers, FaMoneyBillWave, FaShoppingBag, FaPaintBrush, FaTruck, FaClock, FaCheckCircle, FaTimesCircle, FaHourglassHalf } from 'react-icons/fa';
+import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { FaCalendarCheck, FaStar, FaUsers, FaMoneyBillWave, FaShoppingBag, FaPaintBrush, FaTruck, FaClock, FaCheckCircle, FaTimesCircle, FaHourglassHalf, FaBroom } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
 export default function AdminDashboardUi() {
@@ -11,6 +11,7 @@ export default function AdminDashboardUi() {
     totalBookings: 0,
     totalReviews: 0,
     totalUsers: 0,
+    totalApplicants: 0,
     revenue: 0,
     potentialRevenue: 0,
     serviceFees: 0,
@@ -26,14 +27,18 @@ export default function AdminDashboardUi() {
         const canceledRentOrdersRef = collection(db, 'canceled_rent_order');
         const decorationBookingsRef = collection(db, 'decoration_bookings');
         const rentingOrdersRef = collection(db, 'renting_orders');
+        const cleaningOrdersRef = collection(db, 'cleaning_orders');
         const reviewsRef = collection(db, 'reviews');
+        const applicantsRef = collection(db, 'employment_applications');
 
         // Get all documents from each collection
-        const [canceledSnap, decorationSnap, rentingSnap, reviewsSnap] = await Promise.all([
+        const [canceledSnap, decorationSnap, rentingSnap, cleaningSnap, reviewsSnap, applicantsSnap] = await Promise.all([
           getDocs(canceledRentOrdersRef),
           getDocs(decorationBookingsRef),
           getDocs(rentingOrdersRef),
-          getDocs(reviewsRef)
+          getDocs(cleaningOrdersRef),
+          getDocs(reviewsRef),
+          getDocs(applicantsRef)
         ]);
 
         // Process each collection with proper typing (using any for admin page)
@@ -83,6 +88,21 @@ export default function AdminDashboardUi() {
           };
         });
 
+        const cleaningOrders = cleaningSnap.docs.map(doc => {
+          const data = doc.data() as any;
+          return {
+            id: doc.id,
+            type: 'cleaning',
+            serviceType: 'Cleaning',
+            userName: data.customerInfo?.fullName || data.userName || 'Anonymous',
+            amount: 0, // Cleaning services are quotation-based, no amount
+            status: data.status || 'pending',
+            userId: data.userId,
+            ...data,
+            createdAt: data.createdAt
+          };
+        });
+
         // Get all reviews
         const allReviews = reviewsSnap.docs.map(doc => ({ 
           id: doc.id, 
@@ -90,11 +110,15 @@ export default function AdminDashboardUi() {
           createdAt: (doc.data() as any).createdAt
         }));
 
+        // Get total applicants count
+        const totalApplicants = applicantsSnap.size;
+
         // Combine all bookings for recent list
         const allBookings = [
           ...decorationBookings,
           ...rentingOrders,
-          ...canceledOrders
+          ...canceledOrders,
+          ...cleaningOrders
         ];
 
         // Sort by createdAt (most recent first) and take top 20
@@ -103,9 +127,9 @@ export default function AdminDashboardUi() {
           .sort((a, b) => {
             const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
             const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
-            return dateB.getTime() - dateA.getTime();
+            return dateB.getTime() - dateA.getTime(); // Descending order (newest first)
           })
-          .slice(0, 20);
+          .slice(0, 20); // Take only the 20 most recent
 
         // Calculate revenue and fees
         let totalRevenue = 0;
@@ -145,15 +169,17 @@ export default function AdminDashboardUi() {
         decorationBookings.forEach(b => b.userId && uniqueUsers.add(b.userId));
         rentingOrders.forEach(o => o.userId && uniqueUsers.add(o.userId));
         canceledOrders.forEach(o => o.userId && uniqueUsers.add(o.userId));
+        cleaningOrders.forEach(o => o.userId && uniqueUsers.add(o.userId));
 
         setStats({
           totalBookings: allBookings.length,
           totalReviews: allReviews.length,
           totalUsers: uniqueUsers.size,
+          totalApplicants: totalApplicants,
           revenue: Math.round(totalRevenue * 100) / 100, // Round to 2 decimals
           potentialRevenue: Math.round(totalPotentialRevenue * 100) / 100,
           serviceFees: Math.round(totalServiceFees * 100) / 100,
-          recentBookings: sortedBookings,
+          recentBookings: sortedBookings, // Already sorted newest first
           recentReviews: allReviews.slice(0, 5)
         });
       } catch (error) {
@@ -196,6 +222,8 @@ export default function AdminDashboardUi() {
         return <FaShoppingBag className="text-blue-500" size={12} />;
       case 'canceled_rent':
         return <FaTimesCircle className="text-red-500" size={12} />;
+      case 'cleaning':
+        return <FaBroom className="text-green-500" size={12} />;
       default:
         return <FaCalendarCheck className="text-orange-500" size={12} />;
     }
@@ -260,14 +288,22 @@ export default function AdminDashboardUi() {
             Real-time business performance • {new Date().toLocaleDateString('en-GB')}
           </p>
         </div>
-        <div className="bg-orange-500/10 px-3 py-2 rounded-lg border border-orange-500/20">
-          <span className="text-orange-500 text-xs font-bold flex items-center gap-2">
-            <FaMoneyBillWave /> Service Fees: £{stats.serviceFees.toLocaleString()}
-          </span>
+
+        <div className='flex justify-center items-center gap-2 md:gap-4'>
+          <div className="bg-orange-500/10 px-3 py-2 md:rounded-lg border border-orange-500/20">
+            <span className="text-orange-500 text-xs font-bold flex items-center gap-2">
+              <FaMoneyBillWave /> Service Fees: £{stats.serviceFees.toLocaleString()}
+            </span>
+          </div>
+          <div className="bg-green-500/10 px-3 py-2 md:rounded-lg border border-green-500/20">
+            <span className="text-green-500 text-xs font-bold flex items-center gap-2">
+              <FaMoneyBillWave /> Job Applicants: {stats.totalApplicants.toLocaleString()}
+            </span>
+          </div>
         </div>
       </header>
 
-      {/* Stats Grid */}
+      {/* Stats Grid - Now 5 cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
         {statCards.map((stat, i) => (
           <motion.div 
@@ -275,7 +311,7 @@ export default function AdminDashboardUi() {
             initial={{ opacity: 0, y: 20 }} 
             animate={{ opacity: 1, y: 0 }} 
             transition={{ delay: i * 0.1 }} 
-            className="bg-zinc-900 border border-white/5 p-4 md:p-6 rounded-xl md:rounded-2xl hover:border-orange-500/20 transition-colors"
+            className="bg-zinc-900 border border-white/5 p-4 md:p-6 rounded md:rounded-xl hover:border-orange-500/20 transition-colors"
           >
             <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center mb-3 md:mb-4 text-white`}>
               <stat.icon size={16} className="md:w-5 md:h-5" />
@@ -289,8 +325,8 @@ export default function AdminDashboardUi() {
 
       {/* Recent Activity Grid */}
       <div className="grid lg:grid-cols-2 gap-4 md:gap-8">
-        {/* Recent Bookings - 20 items with scroll */}
-        <div className="bg-zinc-900/50 border border-white/5 rounded-xl md:rounded-3xl p-4 md:p-6">
+        {/* Recent Bookings - 20 items with scroll, newest at top */}
+        <div className="bg-zinc-900/50 border border-white/5 rounded-lg md:rounded-xl p-4 md:p-6">
           <h2 className="text-white font-black uppercase text-xs md:text-sm mb-4 md:mb-6 flex items-center gap-2">
             <div className="w-1 h-4 bg-orange-500 rounded-full" /> 
             Recent Activity <span className="text-zinc-500 text-[8px] ml-2">({stats.recentBookings.length} items)</span>
@@ -303,13 +339,13 @@ export default function AdminDashboardUi() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="flex flex-col md:flex-row md:items-center justify-between p-3 md:p-4 bg-white/[0.02] rounded-xl md:rounded-2xl border border-white/[0.02] hover:bg-white/[0.04] hover:border-orange-500/10 transition-all"
+                  className="flex flex-col md:flex-row md:items-center justify-between p-3 md:p-4 bg-white/[0.02] md:rounded-xl border border-white/[0.02] hover:bg-white/[0.04] hover:border-orange-500/10 transition-all"
                 >
                   <div className="flex-1 mb-2 md:mb-0">
                     <div className="flex items-center gap-2 mb-1">
                       {getServiceIcon(booking.type)}
                       <p className="text-white text-xs md:text-sm font-bold truncate max-w-[150px] md:max-w-none">
-                        {booking.userName || booking.fullName || booking.customerName || 'Anonymous'}
+                        {booking.userName || booking.fullName || booking.customerName || booking.customerInfo?.fullName || 'Anonymous'}
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-1 md:gap-2">
@@ -349,7 +385,7 @@ export default function AdminDashboardUi() {
         </div>
 
         {/* Recent Reviews */}
-        <div className="bg-zinc-900/50 border border-white/5 rounded-xl md:rounded-3xl p-4 md:p-6">
+        <div className="bg-zinc-900/50 border border-white/5 rounded-lg md:rounded-xl p-4 md:p-6">
           <h2 className="text-white font-black uppercase text-xs md:text-sm mb-4 md:mb-6 flex items-center gap-2">
             <div className="w-1 h-4 bg-yellow-500 rounded-full" /> 
             Latest Feedback <span className="text-zinc-500 text-[8px] ml-2">({stats.recentReviews.length} items)</span>
@@ -362,7 +398,7 @@ export default function AdminDashboardUi() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="p-3 md:p-4 bg-white/[0.02] rounded-xl md:rounded-2xl border border-white/[0.02] hover:bg-white/[0.04] hover:border-yellow-500/10 transition-all"
+                  className="p-3 md:p-4 bg-white/[0.02] md:rounded-xl border border-white/[0.02] hover:bg-white/[0.04] hover:border-yellow-500/10 transition-all"
                 >
                   <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-2">

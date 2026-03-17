@@ -9,11 +9,10 @@ import {
 import { 
   FaWhatsapp, FaEnvelope, FaPhone, FaMapMarkerAlt, 
   FaCalendarAlt, FaClock, FaCheckCircle, FaUser,
-  FaGavel, FaLayerGroup, FaLock, FaMapPin, FaTag,
+  FaGavel, FaLayerGroup, FaLock, FaMapPin, FaTag, FaTimesCircle, FaComment
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { div } from 'framer-motion/client';
 
 export default function AdminDecorationBookings() {
   const [bookings, setBookings] = useState<any[]>([]);
@@ -23,8 +22,28 @@ export default function AdminDecorationBookings() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const [passcode, setPasscode] = useState("");
+  
+  // Cancel reason states
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancellingBooking, setCancellingBooking] = useState<any>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [customReason, setCustomReason] = useState("");
 
   const ADMIN_PASSCODE = process.env.NEXT_PUBLIC_ADMIN_PIN; 
+
+  // Predefined cancel reasons for decoration
+  const cancelReasons = [
+    { label: "Budget too low", value: "budget_too_low" },
+    { label: "Dates unavailable", value: "dates_unavailable" },
+    { label: "Location out of service area", value: "location_out_of_area" },
+    { label: "Design style not available", value: "style_unavailable" },
+    { label: "Materials currently unavailable", value: "materials_unavailable" },
+    { label: "Incomplete information", value: "incomplete_info" },
+    { label: "Duplicate request", value: "duplicate_request" },
+    { label: "Customer requested cancellation", value: "customer_requested" },
+    { label: "Team/resources unavailable", value: "resources_unavailable" },
+    { label: "Event date too soon", value: "date_too_soon" },
+  ];
 
   useEffect(() => {
     const q = query(collection(db, "decoration_bookings"), orderBy("createdAt", "desc"));
@@ -40,6 +59,38 @@ export default function AdminDecorationBookings() {
       await updateDoc(doc(db, "decoration_bookings", id), { status: newStatus });
       toast.success(`Moved to ${newStatus}`);
     } catch (e) { toast.error("Update failed"); }
+  };
+
+  const handleCancelWithReason = async () => {
+    if (!cancellingBooking) return;
+    
+    const finalReason = customReason.trim() || cancelReason;
+    
+    if (!finalReason) {
+      toast.error("Please select or enter a cancellation reason");
+      return;
+    }
+
+    try {
+      const reasonText = customReason.trim() 
+        ? customReason 
+        : cancelReasons.find(r => r.value === cancelReason)?.label || cancelReason;
+
+      await updateDoc(doc(db, "decoration_bookings", cancellingBooking.id), { 
+        status: 'cancelled',
+        cancelReason: reasonText,
+        cancelledAt: new Date(),
+        cancelledBy: 'admin'
+      });
+      
+      toast.success("Booking cancelled with reason");
+      setShowCancelModal(false);
+      setCancellingBooking(null);
+      setCancelReason("");
+      setCustomReason("");
+    } catch (e) { 
+      toast.error("Cancel failed"); 
+    }
   };
 
   const handleWipeRequest = (id: string) => {
@@ -135,7 +186,17 @@ export default function AdminDecorationBookings() {
                       <p className="text-xs font-bold text-slate-500 flex items-center gap-2 mt-2">
                         <FaMapMarkerAlt className="text-red-500"/> {booking.address}
                       </p>
-                      {/* ADDED: Postal Code Display */}
+                      
+                      {/* Show cancel reason if booking is cancelled */}
+                      {booking.status === 'cancelled' && booking.cancelReason && (
+                        <div className="mt-3 p-2 bg-red-50 border border-red-100 rounded-lg">
+                          <p className="text-[9px] font-black text-red-600 flex items-center gap-1">
+                            <FaTimesCircle size={10} /> Cancelled:
+                          </p>
+                          <p className="text-[10px] text-red-700 mt-1">{booking.cancelReason}</p>
+                        </div>
+                      )}
+                      
                       <p className="text-xs font-bold text-purple-600 flex items-center gap-2 mt-1">
                         <FaMapPin className="text-purple-500"/> {booking.postalCode}
                       </p>
@@ -146,20 +207,18 @@ export default function AdminDecorationBookings() {
                       </div>
                     </div>
 
-                    {/* Column 2: The Deal - UPDATED with postal code removed from here and estimate added */}
+                    {/* Column 2: The Deal */}
                     <div className="space-y-1 bg-slate-50 p-4 rounded-xl border border-slate-100">
                       <div className="flex items-center gap-2 text-slate-400 mb-2">
                         <FaGavel size={10}/> <span className="text-[9px] font-black uppercase tracking-widest">The Deal</span>
                       </div>
                       <h4 className="text-xs font-black text-purple-600 uppercase">{booking.serviceName}</h4>
                       
-                      {/* UPDATED: Customer Offer with smaller amount and label */}
                       <div className="flex items-baseline gap-1 mt-2">
                         <span className="text-xl font-black text-slate-900">£{booking.bidAmount}</span>
                         <span className="text-[8px] font-black text-slate-400 uppercase ml-1">customer's offer</span>
                       </div>
                       
-                      {/* ADDED: Estimate Range Display */}
                       {booking.estimateRange && (
                         <p className="text-xs font-black text-emerald-600 flex items-center gap-1 mt-2">
                           <FaTag size={12} className="text-emerald-500"/> Estimate: <span className='text-red-800'>{booking.estimateRange}</span>
@@ -193,10 +252,13 @@ export default function AdminDecorationBookings() {
                             <FaCheckCircle/> Approve Bid
                           </button>
                           <button 
-                            onClick={() => updateStatus(booking.id, 'cancelled')}
-                            className="w-full py-3 bg-white border-2 border-slate-300 text-slate-600 hover:text-orange-500 hover:border-orange-100 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all"
+                            onClick={() => {
+                              setCancellingBooking(booking);
+                              setShowCancelModal(true);
+                            }}
+                            className="w-full py-3 bg-white border-2 border-slate-300 text-slate-600 hover:text-orange-500 hover:border-orange-100 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all flex items-center justify-center gap-2"
                           >
-                            Cancel Request
+                            <FaTimesCircle/> Cancel Request
                           </button>
                         </>
                       )}
@@ -222,7 +284,120 @@ export default function AdminDecorationBookings() {
         </div>
       </div>
 
-      {/* DELETE MODAL (Same as previous) */}
+      {/* Cancel Reason Modal */}
+      <AnimatePresence>
+        {showCancelModal && cancellingBooking && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              onClick={() => {
+                setShowCancelModal(false);
+                setCancellingBooking(null);
+                setCancelReason("");
+                setCustomReason("");
+              }} 
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" 
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }} 
+              animate={{ scale: 1, opacity: 1, y: 0 }} 
+              exit={{ scale: 0.9, opacity: 0, y: 20 }} 
+              className="relative bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center">
+                  <FaTimesCircle size={20} />
+                </div>
+                <h2 className="text-xl font-black text-slate-900">Cancel Booking</h2>
+              </div>
+              
+              <p className="text-sm text-slate-500 mb-4">
+                Please provide a reason for cancelling this decoration booking
+              </p>
+
+              {/* Quick reason buttons */}
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                {cancelReasons.slice(0, 6).map((reason) => (
+                  <button
+                    key={reason.value}
+                    onClick={() => {
+                      setCancelReason(reason.value);
+                      setCustomReason("");
+                    }}
+                    className={`px-3 py-2 rounded-lg text-[10px] font-bold uppercase transition-all ${
+                      cancelReason === reason.value
+                        ? 'bg-orange-600 text-white'
+                        : 'bg-orange-50 text-orange-600 hover:bg-orange-100'
+                    }`}
+                  >
+                    {reason.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                {cancelReasons.slice(6).map((reason) => (
+                  <button
+                    key={reason.value}
+                    onClick={() => {
+                      setCancelReason(reason.value);
+                      setCustomReason("");
+                    }}
+                    className={`px-3 py-2 rounded-lg text-[10px] font-bold uppercase transition-all ${
+                      cancelReason === reason.value
+                        ? 'bg-orange-600 text-white'
+                        : 'bg-orange-50 text-orange-600 hover:bg-orange-100'
+                    }`}
+                  >
+                    {reason.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Custom reason input */}
+              <div className="relative mb-6">
+                <div className="absolute left-3 top-3 text-orange-400">
+                  <FaComment size={14} />
+                </div>
+                <textarea
+                  value={customReason}
+                  onChange={(e) => {
+                    setCustomReason(e.target.value);
+                    if (e.target.value) setCancelReason("");
+                  }}
+                  placeholder="Or type custom reason..."
+                  rows={3}
+                  className="w-full pl-10 pr-4 py-3 bg-orange-50 border-2 border-orange-200 rounded-xl text-sm outline-none focus:border-orange-500 transition-all"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => {
+                    setShowCancelModal(false);
+                    setCancellingBooking(null);
+                    setCancelReason("");
+                    setCustomReason("");
+                  }} 
+                  className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 transition-all"
+                >
+                  Back
+                </button>
+                <button 
+                  onClick={handleCancelWithReason} 
+                  className="flex-1 py-3 bg-orange-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-orange-700 transition-all"
+                >
+                  Confirm Cancel
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* DELETE MODAL */}
       <AnimatePresence>
         {showDeleteModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">

@@ -9,13 +9,25 @@ import {
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { 
   FaWhatsapp, FaComments, FaTimes, FaSpinner, FaExclamationTriangle, 
-  FaSearch, FaEdit, FaTrash, FaCheck, FaGoogle, FaEnvelope, FaUserLock, 
-  FaMapMarkerAlt, FaPhone 
+  FaSearch, FaEdit, FaTrash, FaGoogle, FaEnvelope, FaUserLock, 
+  FaMapMarkerAlt, FaTimesCircle
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import emailjs from '@emailjs/browser';
 import Link from 'next/link';
+
+interface DecorationBooking {
+  id: string;
+  userId: string;
+  serviceName: string;
+  status: 'pending' | 'approved' | 'cancelled';
+  createdAt: any; // Using any for the Timestamp compatibility
+  bidAmount: number;
+  estimateRange: string;
+  date: string;
+  time: string;
+  cancelReason?: string;
+}
 
 const WHATSAPP_BOILERPLATE = "Hi Isundunrin Rentals, I am interested in your *{{SERVICE}}* service. Could you provide more details?";
 
@@ -66,19 +78,31 @@ export default function DecorationServicesUi() {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCheckBooking, setShowCheckBooking] = useState(false);
-  const [viewableBookings, setViewableBookings] = useState<any[]>([]);
+  const [viewableBookings, setViewableBookings] = useState<DecorationBooking[]>([]);
   const [contactNumber, setContactNumber] = useState("447565123627");
   const [showAuthOverlay, setShowAuthOverlay] = useState(false);
   const [editingBooking, setEditingBooking] = useState<any | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<any | null>(null);
+  
+  // New state for notification badge
+  const [pendingApprovedCount, setPendingApprovedCount] = useState(0);
 
   const [formData, setFormData] = useState({
-    fullName: '', phone: '', email: '', address: '', postalCode: '',
+    fullName: '', phone: '', email: '', address: '',
     contactPreference: 'WhatsApp', quantity: 1, bidAmount: 0, 
     notes: '', date: '', time: ''
   });
 
   const [user, setUser] = useState<any>(null);
+
+  // Get today's date in YYYY-MM-DD format for min date attribute
+  const getTodayDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   // --- AUTH & DATA SYNC ---
   useEffect(() => {
@@ -103,15 +127,48 @@ export default function DecorationServicesUi() {
     return () => { unsubAuth(); unsubContact(); unsubHeader(); unsubItems(); };
   }, []);
 
-  // Fetch User Quotes
+  // Listen for user's quotations and update notification count
   useEffect(() => {
-    if (!user || !showCheckBooking) return;
-    const q = query(collection(db, "decoration_bookings"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
+    if (!user) return;
+
+    const q = query(
+      collection(db, "decoration_bookings"), 
+      where("userId", "==", user.uid), 
+      orderBy("createdAt", "desc")
+    );
+    
     const unsub = onSnapshot(q, (snap) => {
-      setViewableBookings(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      // Cast the docs to our interface
+      const bookings = snap.docs.map(d => ({ id: d.id, ...d.data() } as DecorationBooking));
+      setViewableBookings(bookings);
+      
+      const lastViewed = localStorage.getItem('quotations-last-viewed');
+      
+      if (showCheckBooking) {
+        setPendingApprovedCount(0);
+        localStorage.setItem('quotations-last-viewed', Date.now().toString());
+      } else {
+        const newCount = bookings.filter(booking => {
+          // SAFE CHECK: Ensure createdAt exists and has the toDate function
+          const createdAtDate = booking.createdAt?.toDate ? booking.createdAt.toDate() : new Date();
+          const createdAtTime = createdAtDate.getTime();
+          
+          const isRelevant = booking.status === 'pending' || booking.status === 'approved';
+          return isRelevant && (!lastViewed || createdAtTime > parseInt(lastViewed));
+        }).length;
+        setPendingApprovedCount(newCount);
+      }
     });
+
     return () => unsub();
   }, [user, showCheckBooking]);
+  // Reset notification count when modal is opened
+  useEffect(() => {
+    if (showCheckBooking) {
+      setPendingApprovedCount(0);
+      localStorage.setItem('quotations-last-viewed', Date.now().toString());
+    }
+  }, [showCheckBooking]);
 
   const googleSignIn = async () => {
     try { await signInWithPopup(auth, new GoogleAuthProvider()); toast.success("Signed in!"); } 
@@ -121,24 +178,14 @@ export default function DecorationServicesUi() {
   const handleGetQuote = async () => {
     if (!user) return setShowAuthOverlay(true);
     
-    // 1. Clean and Format Postal Code
-    const rawPostal = (formData.postalCode || "").trim().toUpperCase();
-    const cleanPostal = rawPostal.replace(/\s+/g, ''); 
-    
     const { fullName, phone, email, address, date, time, bidAmount, quantity } = formData;
     
-    // 2. Validation
-    if (!fullName.trim() || !phone.trim() || !email.trim() || !address.trim() || !cleanPostal || !date || !time || bidAmount <= 0) {
+    // Validation - removed postal code requirement
+    if (!fullName.trim() || !phone.trim() || !email.trim() || !address.trim() || !date || !time || bidAmount <= 0) {
       return toast.error("Please fill in all required fields");
     }
-
-    // 3. Bristol Check (Functional Logic)
-    // We keep this here so the user gets a nice toast error instead of a silent Firebase denial
-    if (!cleanPostal.startsWith('BS')) {
-      return toast.error("Currently, we only serve Bristol area (BS postcodes)");
-    }
     
-    // 4. Price Logic
+    // Price Logic
     const [minRate, maxRate] = selectedItem.priceRange.split('-').map(Number);
     const minAllowed = minRate * quantity;
     const maxAllowed = maxRate * quantity;
@@ -151,22 +198,18 @@ export default function DecorationServicesUi() {
     setIsSubmitting(true);
 
     try {
-      // 5. Data Submission
+      // Data Submission
       console.log("Submitting with userId:", user.uid);
-      console.log("Postal code:", rawPostal);
-      console.log("Postal code starts with BS?", rawPostal.startsWith('BS'));
 
-      // We send 'userId' so the 'isOwner' rule in your Firebase Rules works for 'My Quotations'
       await addDoc(collection(db, "decoration_bookings"), {
-        userId: user.uid,              // CRITICAL: Links the doc to the user
+        userId: user.uid,
         fullName: fullName.trim(),
         phone: phone.trim(),
         email: email.trim(),
         address: address.trim(),
-        postalCode: rawPostal,         // Saved as "BS1 1AA"
         date: date,
         time: time,
-        bidAmount: Number(bidAmount),  // Ensure it's a number, not a string
+        bidAmount: Number(bidAmount),
         quantity: Number(quantity),
         contactPreference: formData.contactPreference,
         notes: formData.notes || "",
@@ -194,7 +237,6 @@ export default function DecorationServicesUi() {
       await updateDoc(bookingRef, {
         phone: editingBooking.phone,
         address: editingBooking.address,
-        postalCode: editingBooking.postalCode.toUpperCase(),
         date: editingBooking.date,
         time: editingBooking.time
       });
@@ -210,7 +252,7 @@ export default function DecorationServicesUi() {
     if (!deleteConfirm || !user) return;
     try {
       await deleteDoc(doc(db, "decoration_bookings", deleteConfirm.id));
-      toast.success("Request cancelled");
+      toast.success("Request deleted");
       setDeleteConfirm(null);
     } catch (e) { 
       console.error("Delete Error:", e);
@@ -225,9 +267,23 @@ export default function DecorationServicesUi() {
           <h2 className="px-4 md:px-0 text-center md:text-left text-sm md:text-lg font-black uppercase italic tracking-tighter text-slate-800">
             {headerText || "Decoration Services"}
           </h2>
-          <button onClick={() => user ? setShowCheckBooking(true) : setShowAuthOverlay(true)} className="bg-slate-900 text-white px-4 py-2.5 rounded-lg font-black text-[9px] uppercase flex items-center gap-2 tracking-widest">
-            <FaSearch size={8} /> My Quotations
-          </button>
+          
+          {/* My Quotations Button with Notification Badge */}
+          <div className="relative">
+            <button 
+              onClick={() => user ? setShowCheckBooking(true) : setShowAuthOverlay(true)} 
+              className="bg-slate-900 text-white px-4 py-2.5 rounded-lg font-black text-[9px] uppercase flex items-center gap-2 tracking-widest"
+            >
+              <FaSearch size={8} /> My Quotations
+            </button>
+            
+            {/* Red Bubble Notification - Shows count of pending + approved orders */}
+            {pendingApprovedCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center animate-pulse border-2 border-white">
+                {pendingApprovedCount}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="mx-auto max-w-6xl grid grid-cols-2 md:grid-cols-4 gap-1.5 md:gap-3">
@@ -300,9 +356,17 @@ export default function DecorationServicesUi() {
                           <p className="text-xs font-bold mt-2 text-center text-white italic">Offers must fall within this professional range</p>
                       </div> 
 
-                      {/* Date and time */}
+                      {/* Date and time - with min date to prevent past dates */}
                       <div className="flex gap-2">
-                        <div className="w-1/2"><input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full p-3 bg-slate-50 border rounded-md md:rounded-xl text-xs font-bold" /></div>
+                        <div className="w-1/2">
+                          <input 
+                            type="date" 
+                            value={formData.date} 
+                            onChange={e => setFormData({...formData, date: e.target.value})} 
+                            min={getTodayDate()}
+                            className="w-full p-3 bg-slate-50 border rounded-md md:rounded-xl text-xs font-bold" 
+                          />
+                        </div>
                         <div className="w-1/2">
                           <select value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className="w-full p-3 bg-slate-50 border rounded-md md:rounded-xl text-xs font-bold outline-none">
                             <option value="">Select Your Time</option>
@@ -332,37 +396,19 @@ export default function DecorationServicesUi() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* SHARED ADDRESS & POSTCODE ROW */}
-                      <div className="relative group md:col-span-1">
-                        <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-purple-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">Event Address</label>
+                      {/* ADDRESS FIELD - NOW FULL WIDTH */}
+                      <div className="relative group md:col-span-2">
+                        <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-purple-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">Full Address</label>
                         <div className="relative">
                           <input 
                             type="text" 
                             value={formData.address} 
                             onChange={e => setFormData({...formData, address: e.target.value})} 
-                            placeholder="Full location" 
+                            placeholder="Street address, city, country" 
                             className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none focus:border-purple-500" 
                           />
                           <FaMapMarkerAlt className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 opacity-50" size={14} />
                         </div>
-                      </div>
-
-                      {/* FIXED BRISTOL POSTAL CODE FIELD - SAME ROW AS ADDRESS */}
-                      <div className="relative group md:col-span-1">
-                        <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-orange-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">Postal Code (Bristol Only)</label>
-                        <input 
-                          type="text" 
-                          value={formData.postalCode || ''} 
-                          onChange={(e) => {
-                            const value = e.target.value.toUpperCase();
-                            setFormData({...formData, postalCode: value});
-                          }} 
-                          placeholder="e.g. BS1 1AA" 
-                          className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-50"
-                        />
-                        {formData.postalCode && !formData.postalCode.startsWith('BS') && (
-                          <p className="text-[9px] font-bold text-red-500 mt-1 ml-1">⚠️ We only serve Bristol area (BS postcodes)</p>
-                        )}
                       </div>
 
                       <div className="relative group">
@@ -381,6 +427,7 @@ export default function DecorationServicesUi() {
                           type="tel" 
                           value={formData.phone} 
                           onChange={e => setFormData({...formData, phone: e.target.value})} 
+                          placeholder="+44 or your country code" 
                           className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none focus:border-purple-500" 
                         />
                       </div>
@@ -444,11 +491,41 @@ export default function DecorationServicesUi() {
                           <h4 className="text-xs font-black uppercase text-slate-800">{b.serviceName}</h4>
                           <p className="text-[10px] text-slate-500">Offer: £{b.bidAmount} • {b.date} at {b.time}</p>
                           <p className="text-[10px] text-slate-400 italic">Estimate was: {b.estimateRange}</p>
+                          
+                          {/* Show cancellation reason if order is cancelled */}
+                          {b.status === 'cancelled' && (
+                            <div className="mt-2 p-2 bg-red-50 border border-red-100 rounded-lg">
+                              <p className="text-[9px] font-black text-red-600 flex items-center gap-1">
+                                <FaTimesCircle size={10} /> Cancellation Reason:
+                              </p>
+                              <p className="text-[10px] text-red-700 mt-1">
+                                {b.cancelReason || "No reason given"}
+                              </p>
+                            </div>
+                          )}
                         </div>
+                        
                         <div className="flex items-center gap-3">
-                          <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-full ${b.status === 'pending' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>{b.status}</span>
-                          <button onClick={() => setEditingBooking(b)} className="p-2 text-slate-400 hover:text-purple-600"><FaEdit size={14}/></button>
-                          <button onClick={() => setDeleteConfirm(b)} className="p-2 text-slate-400 hover:text-red-600"><FaTrash size={14}/></button>
+                          <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-full ${
+                            b.status === 'pending' ? 'bg-orange-100 text-orange-600' : 
+                            b.status === 'approved' ? 'bg-green-100 text-green-600' :
+                            b.status === 'cancelled' ? 'bg-red-100 text-red-600' : 
+                            'bg-green-100 text-green-600'
+                          }`}>
+                            {b.status}
+                          </span>
+                          
+                          {/* Edit button - ONLY for pending orders */}
+                          {b.status === 'pending' && (
+                            <button onClick={() => setEditingBooking(b)} className="p-2 text-slate-400 hover:text-purple-600">
+                              <FaEdit size={14}/>
+                            </button>
+                          )}
+                          
+                          {/* Delete button - SHOW FOR ALL ORDERS (pending, approved, cancelled) */}
+                          <button onClick={() => setDeleteConfirm(b)} className="p-2 text-slate-400 hover:text-red-600">
+                            <FaTrash size={14}/>
+                          </button>
                         </div>
                       </div>
                     )}
@@ -466,8 +543,8 @@ export default function DecorationServicesUi() {
           <div className="fixed inset-0 z-[250] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl">
               <FaExclamationTriangle className="text-red-500 text-4xl mx-auto mb-4" />
-              <h3 className="font-black uppercase text-sm mb-2">Cancel Quote?</h3>
-              <p className="text-[10px] text-slate-500 mb-6 uppercase tracking-widest font-bold">This request will be removed from our system.</p>
+              <h3 className="font-black uppercase text-sm mb-2">Delete Quote?</h3>
+              <p className="text-[10px] text-slate-500 mb-6 uppercase tracking-widest font-bold">This request will be permanently removed from your list.</p>
               <div className="flex gap-3">
                 <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-3 bg-slate-100 rounded-xl font-black text-[10px] uppercase">Keep it</button>
                 <button onClick={handleDeleteBooking} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase">Yes, Delete</button>

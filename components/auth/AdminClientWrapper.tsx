@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { 
   FaTachometerAlt, FaCalendarAlt, FaStar, 
@@ -18,6 +19,7 @@ export default function AdminClientWrapper({ children }: { children: React.React
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [newApplicantsCount, setNewApplicantsCount] = useState(0);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -38,6 +40,48 @@ export default function AdminClientWrapper({ children }: { children: React.React
     return () => unsubscribe();
   }, [router, ADMIN_ID]);
 
+  // Listen for new employment applications
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    // Query for applications created in the last 7 days (or all pending)
+    // You can adjust the time frame as needed
+    const q = query(
+      collection(db, "employment_applications"),
+      where("status", "==", "pending")
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      // Only count as "new" if the user hasn't viewed the applicants page
+      // We'll use localStorage to track last viewed time
+      const lastViewed = localStorage.getItem('applicants-last-viewed');
+      const now = Date.now();
+      
+      if (pathname === '/admin/applicants') {
+        // If currently on applicants page, set count to 0 and update last viewed
+        setNewApplicantsCount(0);
+        localStorage.setItem('applicants-last-viewed', now.toString());
+      } else {
+        // Count applications created after last viewed time
+        const newCount = snapshot.docs.filter(doc => {
+          const createdAt = doc.data().createdAt?.toDate?.() || new Date(0);
+          return !lastViewed || createdAt.getTime() > parseInt(lastViewed);
+        }).length;
+        setNewApplicantsCount(newCount);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [isAdmin, pathname]);
+
+  // Clear counter when navigating to applicants page
+  useEffect(() => {
+    if (pathname === '/admin/applicants') {
+      setNewApplicantsCount(0);
+      localStorage.setItem('applicants-last-viewed', Date.now().toString());
+    }
+  }, [pathname]);
+
   const handleSignOut = async () => {
     try {
       await signOut(auth);
@@ -54,6 +98,12 @@ export default function AdminClientWrapper({ children }: { children: React.React
     { name: 'Rental Services', href: '/admin/rental-services', icon: FaBowlFood },
     { name: 'Decorations', href: '/admin/decoration-services', icon: FaBuilding },
     { name: 'Health Services', href: '/admin/health-services', icon: FaHospital },
+    { 
+      name: 'Applicants', 
+      href: '/admin/applicants', 
+      icon: FaBook,
+      badge: newApplicantsCount > 0 ? newApplicantsCount : undefined 
+    },
     { name: 'Settings', href: '/admin/settings', icon: FaCog },
   ];
 
@@ -104,7 +154,13 @@ export default function AdminClientWrapper({ children }: { children: React.React
                   onClick={closeMobileMenu}
                   className={`flex items-center gap-3 px-4 py-4 rounded-xl transition-all text-xs font-bold uppercase tracking-widest ${isActive ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'text-zinc-500 hover:text-white hover:bg-white/5'}`}
                 >
-                  <Icon size={16} /> <span>{item.name}</span>
+                  <Icon size={16} /> 
+                  <span className="flex-1">{item.name}</span>
+                  {item.badge && (
+                    <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center animate-pulse">
+                      {item.badge}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -141,7 +197,13 @@ export default function AdminClientWrapper({ children }: { children: React.React
               const isActive = pathname === item.href;
               return (
                 <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-[11px] font-bold uppercase tracking-widest ${isActive ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'text-zinc-500 hover:text-white hover:bg-white/5'}`}>
-                  <Icon /> <span>{item.name}</span>
+                  <Icon /> 
+                  <span className="flex-1">{item.name}</span>
+                  {item.badge && (
+                    <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center animate-pulse">
+                      {item.badge}
+                    </span>
+                  )}
                 </Link>
               );
             })}

@@ -1,562 +1,1236 @@
 "use client";
 
-import { useState, useEffect, useRef, Suspense } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { db, auth } from '@/lib/firebase';
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, where, doc, getDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { 
-  FaHome, FaBuilding, FaCouch, FaWindowMaximize, FaWrench, 
-  FaTree, FaCheckCircle, FaPlusCircle, FaMinusCircle, FaTimes, 
-  FaSoap, FaTrashRestore, FaChevronLeft, FaChevronRight,
-  FaPaw, FaDoorOpen, FaLock, FaShieldAlt, FaParking, FaArrowLeft,
-  FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaCreditCard, FaSearch,
-  FaChevronUp, FaChevronDown, FaSpinner
+  FaTimes, FaPlus, FaMinus, FaDog, FaKey, FaLock,
+  FaCalendarAlt, FaClock, FaArrowRight, FaGoogle, FaHistory, FaEnvelope, FaWhatsapp, FaPhone, FaTrash, FaCheckCircle, FaTimesCircle, FaEyeSlash, FaDollarSign, FaUserTimes
 } from 'react-icons/fa';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { auth, db } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
+import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { CheckBookingModal } from '@/components/bookings/CheckBookingModal';
+import { signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
+//import Link from 'next/link';
 
-// --- CONSTANTS ---
-const TIME_SLOTS = ["6-8", "9-12", "1-4", "5-6", "7-9"];
-
-// --- SUB-COMPONENT: AvailabilityGrid ---
-// Logic: Fetches busy slots from backend and disables them in UI
-const AvailabilityGrid = ({ selectedDate, onSelect, currentSlot }: any) => {
-  const [busySlots, setBusySlots] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    let isMounted = true;
-    if (!selectedDate) return;
-    
-    const fetchBusySlots = async () => {
-      setLoading(true);
-      try {
-        const q = query(collection(db, "bookings"), where("bookingDate", "==", selectedDate));
-        const snap = await getDocs(q);
-        if (isMounted) {
-          setBusySlots(snap.docs.map(d => d.data().bookingTime));
-        }
-      } catch (e) {
-        if (isMounted) console.error("Availability sync error:", e);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-    fetchBusySlots();
-    return () => { isMounted = false; };
-  }, [selectedDate]);
-
-  if (loading) return <div className="py-4 flex justify-center"><FaSpinner className="animate-spin text-orange-500" /></div>;
-
-  return (
-    <div className="grid grid-cols-5 gap-1.5 mt-2">
-      {TIME_SLOTS.map(slot => {
-        const isTaken = busySlots.includes(slot);
-        const isSelected = currentSlot === slot;
-        return (
-          <button
-            key={slot}
-            type="button"
-            disabled={isTaken}
-            onClick={() => onSelect(slot)}
-            className={`py-3 rounded-lg text-xs font-black transition-all border flex flex-col items-center justify-center gap-1 ${
-              isTaken ? 'bg-red-500/20 border-red-500/50 text-red-500 cursor-not-allowed' :
-              isSelected ? 'bg-orange-500 border-orange-500 text-white shadow-lg' : 'bg-slate-50 border-slate-400 text-slate-900 hover:border-orange-500'
-            }`}
-          >
-            {isTaken && <FaLock size={8} />}
-            {slot}
-          </button>
-        );
-      })}
-    </div>
-  );
-};
-
-const ROOM_TYPES = [
-  { id: 'bedroom', label: 'Bedrooms', price: 35, category: ['home', 'deep', 'end-of-tenancy', 'office'] },
-  { id: 'bathroom', label: 'Bathroom or Toilet', price: 25, category: ['home', 'deep', 'end-of-tenancy'] },
-  { id: 'kitchen', label: 'Kitchen', price: 45, category: ['home', 'deep', 'end-of-tenancy', 'office'] },
-  { id: 'living', label: 'Living / Reception Room', price: 30, category: ['home', 'deep', 'end-of-tenancy', 'office'] },
-  { id: 'dining', label: 'Dining Room', price: 20, category: ['home', 'deep', 'end-of-tenancy'] },
-  { id: 'office', label: 'Office Room', price: 25, category: ['office', 'deep', 'end-of-tenancy'] },
-  { id: 'garage', label: 'Garage', price: 50, category: ['home', 'deep', 'compound'] },
-  { id: 'cabinets', label: 'Inside Cabinets (per wall)', price: 15, category: ['deep', 'end-of-tenancy', 'home'] },
-  { id: 'window_int', label: 'Interior Windows', price: 12, category: ['windows', 'home', 'office', 'deep', 'end-of-tenancy'] },
-  { id: 'window_ext', label: 'Exterior Windows', price: 40, category: ['windows', 'home', 'office', 'deep', 'end-of-tenancy', 'compound'] },
-  { id: 'doors_int', label: 'Interior Doors (Wipe)', price: 10, category: ['home', 'deep', 'office', 'end-of-tenancy'] },
-  { id: 'doors_ext', label: 'Exterior Doors (Polish)', price: 20, category: ['home', 'deep', 'compound'] },
-  { id: 'driveway', label: 'Driveway / Parking Area', price: 60, category: ['compound'] },
-  { id: 'perimeter', label: 'Perimeter Walls / Fencing', price: 45, category: ['compound'] },
-  { id: 'oven', label: 'Oven / Hob', price: 35, category: ['oven', 'deep', 'end-of-tenancy'] },
-  { id: 'extractor', label: 'Extractor Fan', price: 20, category: ['oven', 'deep', 'end-of-tenancy'] },
-  { id: 'carpet', label: 'Carpet Areas (per room)', price: 30, category: ['deep', 'end-of-tenancy'] },
-  { id: 'rubbish', label: 'Rubbish Removal', price: 25, category: ['after-builders', 'end-of-tenancy'] },
-];
-
-const UK_REQUIREMENTS = [
-  { id: 'pets', label: 'Do you have pets?', icon: <FaPaw /> },
-  { id: 'gate', label: 'Electronic Gate Access?', icon: <FaDoorOpen /> },
-  { id: 'security', label: 'Alarm / Security System?', icon: <FaShieldAlt /> },
-  { id: 'parking', label: 'On-site Parking?', icon: <FaParking /> },
-  { id: 'keys', label: 'Key Safe Access?', icon: <FaLock /> },
-];
-
-const services = [
-  { id: 1, name: 'Home Cleaning', icon: FaHome, basePrice: 40, description: 'Regular home cleaning tailored to your schedule', features: ['Living areas', 'Kitchens', 'Bathrooms'], color: 'bg-blue-50/80', hoverColor: 'hover:bg-blue-100', accent: 'text-blue-600', iconBg: 'bg-blue-100/50', border: 'border-blue-100', category: 'home', image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&q=80&w=800' },
-  { id: 2, name: 'Office Cleaning', icon: FaBuilding, basePrice: 35, description: 'Professional cleaning for your workspace', features: ['Workstations', 'Meeting rooms', 'Kitchens'], color: 'bg-purple-50/80', hoverColor: 'hover:bg-purple-100', accent: 'text-purple-600', iconBg: 'bg-purple-100/50', border: 'border-purple-100', category: 'office', image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=800' },
-  { id: 3, name: 'Deep Cleaning', icon: FaCouch, basePrice: 60, description: 'Thorough deep cleaning of your entire space', features: ['Baseboards', 'Inside cabinets', 'Appliances'], color: 'bg-orange-50/80', hoverColor: 'hover:bg-orange-100', accent: 'text-orange-600', iconBg: 'bg-orange-100/50', border: 'border-orange-100', category: 'deep', image: 'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?auto=format&fit=crop&q=80&w=800' },
-  { id: 4, name: 'After Builders', icon: FaWrench, basePrice: 80, description: 'Post-construction dust and debris removal', features: ['Debris removal', 'Window tracks', 'Full dust'], color: 'bg-red-50/80', hoverColor: 'hover:bg-red-100', accent: 'text-red-600', iconBg: 'bg-red-100/50', border: 'border-red-100', category: 'after-builders', image: 'https://s1.kaercher-media.com/media/image/selection/127074/m2/bauendreinigung-header.webp' },
-  { id: 5, name: 'Only Windows', icon: FaWindowMaximize, basePrice: 30, description: 'Professional streak-free window solutions', features: ['Interior/Exterior', 'Sills & Frames', 'Screen Wash'], color: 'bg-cyan-50/80', hoverColor: 'hover:bg-cyan-100', accent: 'text-cyan-600', iconBg: 'bg-cyan-100/50', border: 'border-cyan-100', category: 'windows', image: 'https://t3.ftcdn.net/jpg/02/68/64/24/360_F_268642423_vXTKYzeYXFqkb5L9BMwnoLsczh6imvKY.jpg' },
-  { id: 6, name: 'Compound Cleaning', icon: FaTree, basePrice: 50, description: 'Expert exterior and perimeter maintenance', features: ['Driveways', 'Perimeter walls', 'Entrance areas'], color: 'bg-emerald-50/80', hoverColor: 'hover:bg-emerald-100', accent: 'text-emerald-600', iconBg: 'bg-emerald-100/50', border: 'border-emerald-100', category: 'compound', image: 'https://ambitiouscleaning.org/wp-content/uploads/2020/12/landscaping-1024x431.jpg' },
-  { id: 7, name: 'Oven Scrub', icon: FaSoap, basePrice: 55, description: 'Specialized degreasing for heavy-use areas', features: ['Deep oven scrub', 'Extractor fans', 'Splashbacks'], color: 'bg-yellow-50/80', hoverColor: 'hover:bg-yellow-100', accent: 'text-yellow-600', iconBg: 'bg-yellow-100/50', border: 'border-yellow-100', category: 'oven', image: 'https://lh7-us.googleusercontent.com/dqwRhvlIh10eg7_4BCFmzOxROj17IvIPM8MqHPZhwVjumvPr03_VtJCf02TPdSDPEXH3whNESLeRWTploP30vifafu2IKt6QJEOpAoXzj-NlGM0XhEp84riXoMw-YRXYnWU1nVvTmT-zv50ZbI78pPg' },
-  { id: 8, name: 'End of Tenancy', icon: FaTrashRestore, basePrice: 95, description: 'Guaranteed deposit-back standards', features: ['Inventory ready', 'Full sanitization', 'Certificate'], color: 'bg-slate-50/80', hoverColor: 'hover:bg-slate-100', accent: 'text-slate-600', iconBg: 'bg-slate-100/50', border: 'border-slate-100', category: 'end-of-tenancy', image: 'https://high-classcleaning.co.uk/wp-content/uploads/2021/01/End-ot-tenancy-clean-main-pic-1.jpg' },
-];
-
-const Counter = ({ label, count, onChange, price }: any) => (
-  <div className="flex items-center justify-between py-4 border-b border-slate-100 last:border-0">
-    <div className="flex flex-col">
-      <span className="text-[11px] font-black uppercase tracking-tight text-slate-700">{label}</span>
-      <span className="text-[8px] font-bold text-slate-400">£{price} each</span>
-    </div>
-    <div className="flex items-center gap-4">
-      <button onClick={() => onChange(Math.max(0, count - 1))} className="text-slate-300 hover:text-orange-500 transition-colors">
-        <FaMinusCircle size={22} />
-      </button>
-      <span className="w-6 text-center font-black text-slate-900 text-sm">{count}</span>
-      <button onClick={() => onChange(count + 1)} className="text-slate-300 hover:text-orange-500 transition-colors">
-        <FaPlusCircle size={22} />
-      </button>
-    </div>
-  </div>
-);
-
-function ServicesContent() {
-  const searchParams = useSearchParams();
-  const selectedType = searchParams.get('type');
-  const [activeOverlay, setActiveOverlay] = useState<any>(null);
-  const [highlightedId, setHighlightedId] = useState<number | null>(null);
-  const [step, setStep] = useState(1);
-  const [counts, setCounts] = useState<any>({});
-  const [checkedRequirements, setCheckedRequirements] = useState<any>({});
-  const [bookingDate, setBookingDate] = useState('');
-  const [bookingTime, setBookingTime] = useState('');
-  const [jobNotes, setJobNotes] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [email, setEmail] = useState('');
-  const [address, setAddress] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [showCheckBooking, setShowCheckBooking] = useState(false);
-  const [isOrderExpanded, setIsOrderExpanded] = useState(false);
-  const [showPayment, setShowPayment] = useState(false);
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
-
-  // --- LOGIC: Bridge QuickBooking Data to State ---
-  useEffect(() => {
-    const quickData = localStorage.getItem('quickBookingData');
-    if (quickData) {
-      try {
-        const parsed = JSON.parse(quickData);
-        const service = services.find(s => s.category === parsed.serviceCategory);
-        
-        if (service) {
-          setActiveOverlay(service);
-          setFullName(auth.currentUser?.displayName || parsed.fullName || '');
-          setEmail(parsed.userEmail || auth.currentUser?.email || '');
-          setPhoneNumber(parsed.phoneNumber || '');
-          setAddress(parsed.address || ''); 
-          setBookingDate(parsed.bookingDate || '');
-          setBookingTime(parsed.bookingTime || '');
-          setCounts(parsed.roomCounts || {});
-          
-          // --- PET LOGIC ---
-          if(parsed.hasPets) {
-            setCheckedRequirements((prev: any) => ({...prev, pets: true}));
-          }
-          if(parsed.jobNotes) {
-            setJobNotes(parsed.jobNotes);
-          }
-
-          setStep(2); 
-          setShowPayment(true);
-          localStorage.removeItem('quickBookingData');
-        }
-      } catch (e) { console.error("Sync error:", e); }
-    }
-  }, [auth.currentUser]);
-
-  useEffect(() => {
-    if (selectedType) {
-      const service = services.find(s => s.category === selectedType);
-      if (service) {
-        const element = document.getElementById(`service-${service.id}`);
-        element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setHighlightedId(service.id);
-        setTimeout(() => {
-          setActiveOverlay(service);
-          setStep(1);
-          setHighlightedId(null);
-        }, 1500);
-      }
-    }
-  }, [selectedType]);
-
-  useEffect(() => {
-    if (auth.currentUser) {
-      setEmail(auth.currentUser.email || '');
-      setFullName((prev: string) => prev || auth.currentUser?.displayName || '');
-    }
-  }, [auth.currentUser]);
-
-  const getFilteredRoomTypes = () => activeOverlay ? ROOM_TYPES.filter(room => room.category.includes(activeOverlay.category)) : [];
-  const filteredRoomTypes = getFilteredRoomTypes();
-  const hasSelectedRooms = filteredRoomTypes.some(room => (counts[room.id] || 0) > 0);
-  const subtotal = filteredRoomTypes.reduce((acc, room) => acc + (counts[room.id] || 0) * room.price, 0) + (activeOverlay?.basePrice || 0);
-  const vat = subtotal * 0.20;
-  const total = subtotal + vat;
-
-  const validateBookingDetails = () => {
-    if (!fullName?.trim()) { toast.error('Full name is required'); return false; }
-    if (!email?.trim() || !email.includes('@')) { toast.error('Valid email is required'); return false; }
-    if (!phoneNumber?.trim()) { toast.error('Phone number is required'); return false; }
-    if (!address?.trim()) { toast.error('Full address is required'); return false; }
-    if (!bookingDate) { toast.error('Please select a date'); return false; }
-    if (!bookingTime) { toast.error('Please select a time slot'); return false; }
-    return true;
-  };
-
-  const handleConfirmBooking = async () => {
-    if (!validateBookingDetails()) return setIsProcessingPayment(false);
-
-    setIsProcessingPayment(true);
-    try {
-      const availabilityQuery = query(
-        collection(db, "bookings"), 
-        where("bookingDate", "==", bookingDate), 
-        where("bookingTime", "==", bookingTime)
-      );
-      const availSnapshot = await getDocs(availabilityQuery);
-      if (!availSnapshot.empty) {
-        setIsProcessingPayment(false);
-        return toast.error("This specific date and time slot is already taken. Please pick another.");
-      }
-
-      const bookingData = {
-        userId: auth.currentUser?.uid || 'guest',
-        userEmail: email.toLowerCase().trim(),
-        fullName: fullName.trim(),
-        phoneNumber,
-        address: address.trim(),
-        service: activeOverlay.name,
-        serviceCategory: activeOverlay.category,
-        basePrice: activeOverlay.basePrice,
-        roomCounts: counts,
-        roomDetails: filteredRoomTypes.filter(r => (counts[r.id] || 0) > 0).map(r => ({ label: r.label, count: counts[r.id], price: r.price })),
-        requirements: Object.entries(checkedRequirements).filter(([_, v]) => v).map(([k]) => k),
-        jobNotes,
-        bookingDate,
-        bookingTime,
-        subtotal,
-        vat,
-        total,
-        status: 'confirmed',
-        paymentStatus: 'paid',
-        createdAt: serverTimestamp(),
-      };
-
-      const docRef = await addDoc(collection(db, 'bookings'), bookingData);
-      localStorage.removeItem('bookingDraft');
-      setShowPayment(false);
-      setActiveOverlay(null);
-      router.push(`/receipts/${docRef.id}`);
-    } catch (error) {
-      console.error(error);
-      toast.error('Booking failed. Please check your connection.');
-    } finally {
-      setIsProcessingPayment(false);
-    }
-  };
-
-  const handleFakePayment = () => {
-    setIsProcessingPayment(true);
-    setTimeout(handleConfirmBooking, 2500);
-  };
-
-  const scroll = (direction: 'left' | 'right') => {
-    if (scrollRef.current) {
-      const { scrollLeft } = scrollRef.current;
-      scrollRef.current.scrollTo({ left: direction === 'left' ? scrollLeft - 220 : scrollLeft + 220, behavior: 'smooth' });
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-white pt-28 pb-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-end mb-8">
-          <button onClick={() => setShowCheckBooking(true)} className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white hover:bg-orange-600 rounded-xl font-black uppercase text-[9px] tracking-widest transition-all shadow-xl active:scale-95">
-            <FaSearch size={10} /> Check My Booking
-          </button>
-        </div>
-
-        <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-slate-900 uppercase italic mb-4">
-            OUR <span className="text-orange-600">SERVICES</span>
-          </h1>
-          <p className="text-slate-500 font-bold uppercase tracking-[0.3em] text-[10px] max-w-xl mx-auto">
-            Select a specialized service to customize your property details
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-6 mb-20">
-          {services.map((service, index) => (
-            <motion.div 
-              key={service.id} 
-              id={`service-${service.id}`}
-              initial={{ opacity: 0, y: 20 }} 
-              animate={{ 
-                opacity: 1, 
-                y: 0,
-                boxShadow: highlightedId === service.id 
-                  ? ["0px 0px 0px #f97316", "0px 0px 40px #f97316", "0px 0px 0px #f97316"] 
-                  : "0px 0px 0px rgba(0,0,0,0)"
-              }} 
-              transition={{ 
-                delay: index * 0.05,
-                boxShadow: highlightedId === service.id ? { repeat: Infinity, duration: 0.7 } : {}
-              }}
-              onClick={() => { setActiveOverlay(service); setStep(1); }}
-              className={`cursor-pointer group relative overflow-hidden md:rounded-2xl border-2 transition-all duration-500 ${highlightedId === service.id ? 'border-orange-500 scale-105 z-10' : 'border-transparent'} ${service.color} ${service.hoverColor} ${service.border} shadow-sm hover:shadow-xl hover:scale-[1.02]`}
-            >
-              <div className="h-32 w-full relative">
-                 <img src={service.image} alt={service.name} className="w-full h-full object-cover" />
-                 <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors" />
-                 <div className={`absolute -bottom-6 left-6 p-3 rounded-xl ${service.iconBg} shadow-xl border-2 border-white transition-all duration-300 group-hover:scale-110 group-hover:-translate-y-1`}>
-                    <service.icon className={`text-2xl ${service.accent}`} />
-                 </div>
-              </div>
-
-              <div className="py-8 px-6">
-                <div className="flex items-start justify-between mb-4">
-                  <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter italic leading-none">{service.name}</h3>
-                  <div className="text-right">
-                      <span className={`text-lg font-black ${service.accent} block leading-none`}>£{service.basePrice}</span>
-                      <span className="text-[7px] font-bold text-slate-400 uppercase tracking-widest">Starting at</span>
-                  </div>
-                </div>
-                <p className="text-slate-600 text-[10px] leading-relaxed mb-6 font-medium opacity-80">{service.description}</p>
-                <div className="space-y-2">
-                  {service.features.map((feature, i) => (
-                    <div key={i} className="text-[9px] font-black uppercase tracking-tight text-slate-700 flex items-center gap-2"><div className={`w-1 h-1 rounded-full ${service.accent.replace('text', 'bg')}`} />{feature}</div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
-        <AnimatePresence>
-          {activeOverlay && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-xl flex items-center justify-center p-2 md:p-6">
-              <motion.div initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 50 }} className="bg-white w-full max-w-6xl h-[98vh] md:h-[95vh] rounded-xl overflow-hidden shadow-2xl flex flex-col md:flex-row relative">
-                <div className="flex-1 overflow-y-auto p-4 md:p-10 border-r border-slate-100 custom-scrollbar">
-                  <div className="flex items-center justify-between mb-5 sticky top-0 bg-white pb-2 z-20">
-                    <button onClick={() => setActiveOverlay(null)} className="p-2.5 bg-slate-100 rounded-full hover:bg-orange-500 hover:text-white transition-all"><FaTimes /></button>
-                    <div className="flex gap-2">
-                       <div className={`h-1 w-10 md:w-16 rounded-full ${step >= 1 ? 'bg-orange-500' : 'bg-slate-100'}`} />
-                       <div className={`h-1 w-10 md:w-16 rounded-full ${step >= 2 ? 'bg-orange-500' : 'bg-slate-100'}`} />
-                    </div>
-                  </div>
-
-                  {step === 1 ? (
-                    <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-                      <h2 className="text-xl font-black uppercase italic tracking-tighter mb-2">Manage {activeOverlay.name}</h2>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-8">Select relevant areas for this service</p>
-                      <div className="grid gap-0.5 mb-6">
-                        {filteredRoomTypes.length > 0 ? (
-                          filteredRoomTypes.map(room => (
-                            <Counter key={room.id} label={room.label} count={counts[room.id] || 0} price={room.price} onChange={(val: number) => setCounts({...counts, [room.id]: val})} />
-                          ))
-                        ) : (<div className="text-center py-8 text-slate-400 text-[10px] font-bold uppercase">No additional items needed for this service</div>)}
-                      </div>
-                      <div className="mb-10 relative">
-                        <div className="flex items-center justify-between mb-4">
-                           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Essential Site Checklist</h3>
-                           <div className="flex gap-2">
-                             <button onClick={() => scroll('left')} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200"><FaChevronLeft size={10} /></button>
-                             <button onClick={() => scroll('right')} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200"><FaChevronRight size={10} /></button>
-                           </div>
-                        </div>
-                        <div ref={scrollRef} className="flex gap-4 overflow-x-auto no-scrollbar pb-2 snap-x">
-                           {UK_REQUIREMENTS.map((req) => (
-                             <div key={req.id} onClick={() => setCheckedRequirements((prev: any) => ({...prev, [req.id]: !prev[req.id]}))} className={`flex-shrink-0 w-40 p-5 rounded-2xl border-2 transition-all cursor-pointer snap-start ${checkedRequirements[req.id] ? 'border-orange-500 bg-orange-50' : 'border-slate-100 bg-slate-50'}`}>
-                               <div className={`mb-3 text-lg ${checkedRequirements[req.id] ? 'text-orange-600' : 'text-slate-300'}`}>{req.icon}</div>
-                               <p className="text-[9px] font-black uppercase tracking-tight leading-tight">{req.label}</p>
-                             </div>
-                           ))}
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Important Access Notes</label>
-                        <textarea value={jobNotes} onChange={(e) => setJobNotes(e.target.value)} placeholder="Provide details about parking, key safe, or pets..." className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold focus:outline-none focus:border-orange-500 min-h-[90px]" />
-                      </div>
-                    </motion.div>
-                  ) : step === 2 ? (
-                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-                      <h2 className="text-xl font-black uppercase italic tracking-tighter mb-6">Schedule & Details</h2>
-                      <div className="space-y-6 mb-8">
-                        <div className="space-y-2 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                          <label className="text-[10px] font-black uppercase text-slate-400">Preferred Date *</label>
-                          <input type="date" min={new Date().toISOString().split("T")[0]} value={bookingDate} onChange={(e)=>{setBookingDate(e.target.value); setBookingTime('');}} className="w-full p-3 bg-white border border-slate-100 rounded-xl font-bold focus:border-orange-500 outline-none" required />
-                          {bookingDate && (
-                            <div className="mt-4">
-                              <label className="text-[10px] font-black uppercase text-orange-500 mb-2 block">Available Time</label>
-                              <AvailabilityGrid selectedDate={bookingDate} currentSlot={bookingTime} onSelect={(s: string) => setBookingTime(s)} />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="space-y-4 mb-8">
-                        <h3 className="text-[12px] font-black uppercase tracking-widest text-slate-400 mb-4">Your Information</h3>
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1"><FaUser className="text-orange-500" /> Full Name *</label>
-                          <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Doe" className="w-full p-2.5 bg-slate-50 border border-slate-100 rounded-xl font-bold focus:border-orange-500 outline-none" required />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1"><FaEnvelope className="text-orange-500" /> Email Address *</label>
-                          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" className="w-full p-2.5 bg-slate-50 border border-slate-100 rounded-xl font-bold focus:border-orange-500 outline-none" required readOnly={!!auth.currentUser?.email} />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1"><FaPhone className="text-orange-500" /> Phone Number (Boston, UK) *</label>
-                          <input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="01205 123456" className="w-full p-2.5 bg-slate-50 border border-slate-100 rounded-xl font-bold focus:border-orange-500 outline-none" required />
-                          <p className="text-[8px] text-slate-400 mt-1">Will be formatted to +44 for Boston area</p>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1"><FaMapMarkerAlt className="text-orange-500" /> Full Address *</label>
-                          <textarea value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Enter your full street address, city, postcode" className="w-full p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold focus:border-orange-500 outline-none min-h-[80px]" required />
-                        </div>
-                      </div>
-                    </motion.div>
-                  ) : null}
-                </div>
-
-                <div className={`w-full md:w-[380px] bg-slate-50 p-6 md:p-10 flex flex-col justify-between border-t md:border-t-0 md:border-l border-slate-200 transition-all duration-300 ${isOrderExpanded ? 'h-[80vh] md:h-full' : 'h-auto md:h-full'}`}>
-                  <div>
-                    <div className="flex items-center justify-between mb-8">
-                      <h3 className="text-lg font-black uppercase italic tracking-tighter flex items-center gap-2"><FaCheckCircle className="text-orange-500" /> Your Order</h3>
-                      <button onClick={() => setIsOrderExpanded(!isOrderExpanded)} className="md:hidden p-2 bg-white rounded-full shadow-sm border border-slate-100 text-slate-900">
-                        {isOrderExpanded ? <FaChevronDown size={14} /> : <FaChevronUp size={14} />}
-                      </button>
-                    </div>
-
-                    <div className={`${isOrderExpanded ? 'block' : 'hidden md:block'} space-y-4 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar text-[10px]`}>
-                      <div className="flex justify-between font-black uppercase text-slate-400"><span>Mobilization Fee ({activeOverlay.name})</span><span className="text-slate-900 font-bold italic">£{activeOverlay.basePrice.toFixed(2)}</span></div>
-                      <AnimatePresence>
-                        {filteredRoomTypes.filter(r => (counts[r.id] || 0) > 0).map(room => (
-                            <motion.div key={room.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex justify-between font-black uppercase text-slate-800"><span>{counts[room.id]}x {room.label}</span><span>£{(counts[room.id] * room.price).toFixed(2)}</span></motion.div>
-                        ))}
-                      </AnimatePresence>
-                    </div>
-                  </div>
-                  
-                  <div className="border-t border-slate-200 mt-6 space-y-2 pt-4">
-                    <div className={`${isOrderExpanded ? 'block' : 'hidden md:block'} space-y-2`}>
-                      <div className="flex justify-between text-[10px] font-black uppercase text-slate-400"><span>Subtotal</span><span>£{subtotal.toFixed(2)}</span></div>
-                      <div className="flex justify-between text-[10px] font-black uppercase text-slate-400"><span>VAT (20%)</span><span>£{vat.toFixed(2)}</span></div>
-                    </div>
-                    <div className="flex justify-between items-center py-4"><span className="text-xs font-black uppercase tracking-tighter">Total Price</span><span className="text-3xl font-black text-orange-600 italic tracking-tighter leading-none">£{total.toFixed(2)}</span></div>
-                    <div className="flex gap-2">
-                        {step > 1 && (<button onClick={() => setStep(step - 1)} className="p-4 bg-white border border-slate-200 rounded-xl text-slate-900 hover:bg-slate-100 transition-colors"><FaArrowLeft /></button>)}
-                        <button 
-                          onClick={step === 1 ? () => setStep(2) : () => validateBookingDetails() && setShowPayment(true)} 
-                          disabled={(step === 1 && !hasSelectedRooms) || (step === 2 && !bookingTime)} 
-                          className={`flex-1 py-4 rounded-xl font-black uppercase tracking-widest text-[9px] transition-all shadow-xl active:scale-95 ${(step === 1 && !hasSelectedRooms) || (step === 2 && !bookingTime) ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-orange-600'}`}
-                        >
-                          {step === 1 ? 'Schedule & Details' : 'Confirm & Pay'}
-                        </button>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {showPayment && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-slate-900/95 backdrop-blur-xl flex items-center justify-center p-4">
-              <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white w-full max-w-md max-h-[98vh] overflow-y-auto rounded-2xl p-8 shadow-2xl relative overflow-hidden">
-                <button onClick={() => setShowPayment(false)} className="absolute top-6 right-6 text-slate-300 hover:text-orange-500"><FaTimes /></button>
-                <div className="text-center mb-6">
-                  <div className="w-14 h-14 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-3 italic font-black text-2xl">£</div>
-                  <h2 className="text-2xl font-black uppercase italic tracking-tighter">Secure Checkout</h2>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Complete your payment for £{total.toFixed(2)}</p>
-                </div>
-
-                <div className="space-y-4 mb-4">
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black uppercase text-slate-400">Cardholder Name</label>
-                    <input type="text" placeholder={fullName} className="w-full p-3 bg-slate-200 border border-slate-100 rounded-xl text-xs font-bold outline-none" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black uppercase text-slate-400">Card Number</label>
-                    <div className="relative">
-                      <FaCreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                      <input type="text" placeholder="xxxx xxxx xxxx xxxx" className="w-full p-3 pl-12 bg-slate-200 border border-slate-100 rounded-xl text-xs font-bold outline-none" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black uppercase text-slate-400">Expiry</label>
-                      <input type="text" placeholder="MM/YY" className="w-full p-3 bg-slate-200 border border-slate-100 rounded-xl text-xs font-bold outline-none" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black uppercase text-slate-400">CVC</label>
-                      <input type="text" placeholder="***" className="w-full p-3 bg-slate-200 border border-slate-100 rounded-xl text-xs font-bold outline-none" />
-                    </div>
-                  </div>
-                </div>
-
-                <button 
-                  onClick={handleFakePayment}
-                  disabled={isProcessingPayment}
-                  className="mt-2 w-full py-4 bg-orange-600 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest hover:bg-orange-700 transition-all shadow-xl flex items-center justify-center gap-2"
-                >
-                  {isProcessingPayment ? <FaSpinner className="animate-spin" /> : 'Pay & Confirm Booking'}
-                </button>
-                <p className="text-center text-[8px] font-bold text-slate-400 uppercase mt-4 flex items-center justify-center gap-2"><FaLock /> Encrypted & Secure SSL Checkout</p>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {showCheckBooking && (<CheckBookingModal onClose={() => setShowCheckBooking(false)} />)}
-        </AnimatePresence>
-      </div>
-      <style jsx global>{`
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
-      `}</style>
-    </div>
-  );
+// --- Interfaces ---
+interface Service {
+  id: string;
+  name: string;
+  description: string;
+  tasks: Array<{ name: string; areaIds: string[] }>;
+  image: string;
 }
 
-export default function CleaningServicesUi() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4">
-        <FaSpinner className="animate-spin text-orange-500 text-4xl" />
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Loading Expertise...</p>
-      </div>
-    }>
-      <ServicesContent />
-    </Suspense>
-  );
+interface Area {
+  id: string;
+  label: string;
+}
+
+interface SelectedTask {
+  name: string;
+  areaIds: string[];
+}
+
+interface SelectedTaskAreas {
+  [taskName: string]: {
+    [areaId: string]: number; // Simple count per area
+  };
+}
+
+interface FormData {
+  fullName: string;
+  phone: string;
+  email: string;
+  contactPreference: 'WhatsApp' | 'Phone Call' | 'Email';
+  address: string;
+  additionalNotes: string;
+  pets: boolean;
+  securityKeys: boolean;
+  fence: boolean;
+  date: string;
+  timeSlot: string;
+}
+
+interface QuotationRequest {
+  id?: string;
+  serviceName: string;
+  serviceId: string;
+  tasks: SelectedTaskAreas;
+  areas: Record<string, Record<string, number>>;
+  areasList: Array<{
+    areaName: string;
+    quantity: number;
+  }>;
+  totalAreas: number;
+  customerInfo: {
+    fullName: string;
+    phone: string;
+    email: string;
+    contactPreference: string;
+    address: string;
+    additionalNotes: string;
+    pets: boolean;
+    securityKeys: boolean;
+    fence: boolean;
+  };
+  selectedDate: string;
+  selectedTime: string;
+  status: 'pending' | 'approved' | 'cancelled';
+  createdAt: any;
+  userId?: string;
+  userEmail?: string;
+  userName?: string;
+  sentViaWhatsApp: boolean;
+  cancelReason?: string;
+  cancelledBy?: string;
+  approvedTotal?: number;
+  approvedPrices?: Record<string, number>;
+}
+
+const CARD_THEMES = [
+  { border: 'hover:border-blue-500', bg: 'bg-blue-50', text: 'text-blue-600', btn: 'bg-blue-600', shadow: 'shadow-blue-200' },
+  { border: 'hover:border-purple-500', bg: 'bg-purple-50', text: 'text-purple-600', btn: 'bg-purple-600', shadow: 'shadow-purple-200' },
+  { border: 'hover:border-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-600', btn: 'bg-emerald-600', shadow: 'shadow-emerald-200' },
+  { border: 'hover:border-orange-500', bg: 'bg-orange-50', text: 'text-orange-600', btn: 'bg-orange-600', shadow: 'shadow-orange-200' },
+  { border: 'hover:border-rose-500', bg: 'bg-rose-50', text: 'text-rose-600', btn: 'bg-rose-600', shadow: 'shadow-rose-200' },
+];
+
+const timeSlots = ['6-8 AM', '9-11 AM', '12-2 PM', '3-5 PM', '6-8 PM'];
+
+const contactPreferences = [
+  { value: 'WhatsApp', label: 'WhatsApp', icon: FaWhatsapp, color: 'text-green-600' },
+  { value: 'Phone Call', label: 'Phone Call', icon: FaPhone, color: 'text-blue-600' },
+  { value: 'Email', label: 'Email', icon: FaEnvelope, color: 'text-purple-600' },
+];
+
+export default function CustomerServicesPage() {
+  const router = useRouter();
+  const [services, setServices] = useState<Service[]>([]);
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [userQuotations, setUserQuotations] = useState<QuotationRequest[]>([]);
+  const [pendingApprovedCount, setPendingApprovedCount] = useState(0);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedTask, setSelectedTask] = useState<SelectedTask | null>(null);
+  const [selectedTaskAreas, setSelectedTaskAreas] = useState<SelectedTaskAreas>({});
+  const [bookingStep, setBookingStep] = useState<'service' | 'tasks' | 'details'>('service');
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [showMyQuotations, setShowMyQuotations] = useState(false);
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>(timeSlots);
+  const [whatsappNumber, setWhatsappNumber] = useState("+2347034632037"); 
+  const [generalEmail, setGeneralEmail] = useState("info@cleanbristol.com");
+  const [hiddenOrderIds, setHiddenOrderIds] = useState<string[]>([]);
+  const [quotationToDecline, setQuotationToDecline] = useState<QuotationRequest | null>(null);
+  const [showDeclineModal, setShowDeclineModal] = useState(false);
+  const [declineReason, setDeclineReason] = useState("");
+
+  const [formData, setFormData] = useState<FormData>({
+    fullName: '', phone: '', email: '', contactPreference: 'WhatsApp',
+    address: '', additionalNotes: '', pets: false,
+    securityKeys: false, fence: false, date: '', timeSlot: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Load hidden orders from localStorage when user is authenticated
+  useEffect(() => {
+    if (user) {
+      const savedHidden = localStorage.getItem(`hidden-orders-${user.uid}`);
+      if (savedHidden) {
+        setHiddenOrderIds(JSON.parse(savedHidden));
+      }
+    } else {
+      setHiddenOrderIds([]);
+    }
+  }, [user]);
+
+  // Save hidden orders to localStorage whenever they change
+  useEffect(() => {
+    if (user && hiddenOrderIds.length > 0) {
+      localStorage.setItem(`hidden-orders-${user.uid}`, JSON.stringify(hiddenOrderIds));
+    }
+    if (user && hiddenOrderIds.length === 0) {
+      localStorage.removeItem(`hidden-orders-${user.uid}`);
+    }
+  }, [hiddenOrderIds, user]);
+
+  // Handle hiding quotation from user view
+  const handleHideQuotation = (quotationId: string) => {
+    setHiddenOrderIds(prev => [...prev, quotationId]);
+    toast.success('Quotation removed from your view');
+  };
+
+  // Handle declining an approved quotation
+  const handleDeclineQuotation = async () => {
+    if (!quotationToDecline) return;
+    
+    if (!declineReason.trim()) {
+      toast.error("Please provide a reason for declining");
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, "cleaning_orders", quotationToDecline.id!), {
+        status: 'cancelled',
+        cancelReason: declineReason,
+        cancelledAt: new Date(),
+        cancelledBy: 'customer'
+      });
+      
+      toast.success('Quotation declined');
+      setShowDeclineModal(false);
+      setQuotationToDecline(null);
+      setDeclineReason("");
+    } catch (error) {
+      toast.error('Failed to decline quotation');
+    }
+  };
+
+  // Optional: Restore all hidden orders
+  const restoreHiddenOrders = () => {
+    if (user) {
+      setHiddenOrderIds([]);
+      localStorage.removeItem(`hidden-orders-${user.uid}`);
+      toast.success('All hidden quotations restored');
+    }
+  };
+
+  useEffect(() => {
+    const fetchContactInfo = async () => {
+      try {
+        const contactRef = doc(db, "settings", "contact_info");
+        const contactSnap = await getDoc(contactRef);
+        
+        if (contactSnap.exists()) {
+          const data = contactSnap.data();
+          // Get the general phone number and format it for WhatsApp
+          const phone = data.generalPhone || "";
+          const email = data.generalEmail || "info@cleanbristol.com";
+          
+          // Remove any spaces, dashes, or plus signs and ensure it's just numbers
+          const formattedPhone = phone.replace(/\s+/g, '').replace(/[^0-9]/g, '');
+          if (formattedPhone) {
+            setWhatsappNumber(formattedPhone);
+          }
+          if (email) {
+            setGeneralEmail(email);
+          }
+          console.log("Contact info loaded:", { phone: formattedPhone, email });
+        }
+      } catch (error) {
+        console.error("Error fetching contact info:", error);
+        // Keep using the default
+      }
+    };
+
+    fetchContactInfo();
+  }, []);
+
+  // WhatsApp configuration
+  const WHATSAPP_CONFIG = {
+    phoneNumber: whatsappNumber,
+  };
+
+  useEffect(() => {
+    const unsubServices = onSnapshot(query(collection(db, "services"), orderBy("updatedAt", "desc")), (snapshot) => {
+      setServices(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Service)));
+    });
+    const unsubAreas = onSnapshot(query(collection(db, "areas"), orderBy("createdAt", "desc")), (snapshot) => {
+      setAreas(snapshot.docs.map(d => ({ id: d.id, label: d.data().label || '' } as Area)));
+    });
+    return () => { unsubServices(); unsubAreas(); };
+  }, []);
+
+  // Auth and Quotations Listener with notification count
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      if (u) {
+        setFormData(p => ({ 
+            ...p, 
+            fullName: u.displayName || p.fullName, 
+            email: u.email || p.email 
+        }));
+        
+        // Listen to user's quotations
+        const q = query(
+          collection(db, "cleaning_orders"), 
+          where("userId", "==", u.uid),
+          orderBy("createdAt", "desc")
+        );
+        
+        const unsubHistory = onSnapshot(q, (snapshot) => {
+          const quotations = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as QuotationRequest));
+          setUserQuotations(quotations);
+          
+          // Count pending and approved orders that are "new" (created after last view)
+          const lastViewed = localStorage.getItem('cleaning-quotations-last-viewed');
+          const now = Date.now();
+          
+          if (showMyQuotations) {
+            // If modal is open, reset count and update last viewed
+            setPendingApprovedCount(0);
+            localStorage.setItem('cleaning-quotations-last-viewed', now.toString());
+          } else {
+            // Count pending and approved orders created after last viewed time
+            const newCount = quotations.filter(quotation => {
+              const createdAt = quotation.createdAt?.toDate?.() || new Date(0);
+              const isRelevant = quotation.status === 'pending' || quotation.status === 'approved';
+              return isRelevant && (!lastViewed || createdAt.getTime() > parseInt(lastViewed));
+            }).length;
+            setPendingApprovedCount(newCount);
+          }
+        });
+        
+        return () => unsubHistory();
+      } else {
+        setUserQuotations([]);
+        setPendingApprovedCount(0);
+      }
+    });
+    return () => unsubscribe();
+  }, [user, showMyQuotations]);
+
+  // Update available time slots when date changes
+  useEffect(() => {
+    if (formData.date) {
+      // Simple validation - you can add more complex logic later
+      setAvailableTimeSlots(timeSlots);
+    } else {
+      setAvailableTimeSlots(timeSlots);
+    }
+  }, [formData.date]);
+
+  const updateAreaCount = (taskName: string, areaId: string, increment: boolean): void => {
+    setSelectedTaskAreas(prev => {
+      const taskAreas = prev[taskName] || {};
+      const currentCount = taskAreas[areaId] || 0;
+      const newCount = increment ? currentCount + 1 : Math.max(0, currentCount - 1);
+      
+      if (newCount === 0) {
+        const { [areaId]: _, ...rest } = taskAreas;
+        if (Object.keys(rest).length === 0) {
+          const { [taskName]: _, ...remainingTasks } = prev;
+          return remainingTasks;
+        }
+        return { ...prev, [taskName]: rest };
+      }
+      
+      return { 
+        ...prev, 
+        [taskName]: { 
+          ...taskAreas, 
+          [areaId]: newCount
+        } 
+      };
+    });
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      setShowAuthModal(false);
+      toast.success('Signed in successfully!');
+    } catch (error) {
+      toast.error('Failed to sign in');
+    }
+  };
+
+  const getTotalAreasSelected = (): number => {
+    let total = 0;
+    Object.values(selectedTaskAreas).forEach(taskAreas => {
+      Object.values(taskAreas).forEach(count => total += count);
+    });
+    return total;
+  };
+
+  const hasSelectedAreas = (): boolean => getTotalAreasSelected() > 0;
+
+  const handleQuotationSuccess = (): void => {
+    toast.success('Quotation request sent successfully!');
+    setBookingStep('service');
+    setSelectedService(null);
+    setSelectedTask(null);
+    setSelectedTaskAreas({});
+    setFormData({
+      fullName: user?.displayName || '', phone: '', email: user?.email || '', contactPreference: 'WhatsApp',
+      address: '', additionalNotes: '', pets: false, securityKeys: false, fence: false, date: '', timeSlot: ''
+    });
+  };
+
+  const prepareAreasList = () => {
+    const areasList: Array<{
+      areaName: string;
+      quantity: number;
+    }> = [];
+
+    Object.entries(selectedTaskAreas).forEach(([taskName, areaSelections]) => {
+      Object.entries(areaSelections).forEach(([areaId, count]) => {
+        if (count > 0) {
+          const area = areas.find(a => a.id === areaId);
+          if (area) {
+            areasList.push({
+              areaName: area.label,
+              quantity: count
+            });
+          }
+        }
+      });
+    });
+
+    return areasList;
+  };
+
+  const prepareQuotationData = (): Omit<QuotationRequest, 'id'> => {
+    const selectedAreasWithLabels: Record<string, Record<string, number>> = {};
+    Object.entries(selectedTaskAreas).forEach(([taskName, areaSelections]) => {
+      selectedAreasWithLabels[taskName] = {};
+      Object.entries(areaSelections).forEach(([areaId, count]) => {
+        const area = areas.find(a => a.id === areaId);
+        if (area) selectedAreasWithLabels[taskName][area.label] = count;
+      });
+    });
+    
+    return {
+      serviceName: selectedService?.name || '',
+      serviceId: selectedService?.id || '',
+      tasks: selectedTaskAreas,
+      areas: selectedAreasWithLabels,
+      areasList: prepareAreasList(),
+      totalAreas: getTotalAreasSelected(),
+      customerInfo: {
+        fullName: formData.fullName,
+        phone: formData.phone,
+        email: formData.email,
+        contactPreference: formData.contactPreference,
+        address: formData.address,
+        additionalNotes: formData.additionalNotes,
+        pets: formData.pets,
+        securityKeys: formData.securityKeys,
+        fence: formData.fence
+      },
+      selectedDate: formData.date,
+      selectedTime: formData.timeSlot,
+      status: 'pending',
+      createdAt: serverTimestamp(),
+      userId: user?.uid,
+      userEmail: user?.email,
+      userName: user?.displayName || formData.fullName,
+      sentViaWhatsApp: false
+    };
+  };
+
+  const submitQuotationToBackend = async () => {
+    if (!user) {
+      toast.error('Please sign in to submit a quotation');
+      setShowAuthModal(true);
+      return false;
+    }
+
+    try {
+      const quotationData = {
+        ...prepareQuotationData(),
+        userId: user.uid,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+      };
+      
+      await addDoc(collection(db, "cleaning_orders"), quotationData);
+      return true;
+    } catch (error) {
+      console.error('Error:', error);
+      return false;
+    }
+  };
+
+  const handleGetQuotation = async () => {
+    setIsSubmitting(true);
+    const success = await submitQuotationToBackend();
+    if (success) {
+      handleQuotationSuccess();
+    }
+    setIsSubmitting(false);
+  };
+
+  const handleSendViaWhatsApp = async () => {
+    setIsSubmitting(true);
+    
+    const success = await submitQuotationToBackend();
+    
+    if (success) {
+      try {
+        const areasBreakdown = prepareAreasList().map(item => 
+          `  • ${item.areaName}: ${item.quantity} ${item.quantity > 1 ? 'areas' : 'area'}`
+        ).join('\n');
+
+        const contactMethodIcon = formData.contactPreference === 'WhatsApp' ? '📱' : 
+                                 formData.contactPreference === 'Phone Call' ? '📞' : '📧';
+
+        const whatsappMessage = `*🔔 NEW QUOTATION REQUEST*\n\n` +
+          `━━━━━━━━━━━━━━━━━━━━━\n` +
+          `*🏠 SERVICE DETAILS*\n` +
+          `━━━━━━━━━━━━━━━━━━━━━\n` +
+          `*Service:* ${selectedService?.name}\n` +
+          `*Date:* ${formData.date}\n` +
+          `*Time:* ${formData.timeSlot}\n\n` +
+          
+          `━━━━━━━━━━━━━━━━━━━━━\n` +
+          `*📋 AREAS TO BE CLEANED*\n` +
+          `━━━━━━━━━━━━━━━━━━━━━\n` +
+          `${areasBreakdown}\n\n` +
+          `*Total Areas:* ${getTotalAreasSelected()}\n\n` +
+          
+          `━━━━━━━━━━━━━━━━━━━━━\n` +
+          `*👤 CUSTOMER INFORMATION*\n` +
+          `━━━━━━━━━━━━━━━━━━━━━\n` +
+          `*Name:* ${formData.fullName}\n` +
+          `*Phone:* ${formData.phone}\n` +
+          `*Email:* ${formData.email}\n` +
+          `*Preferred Contact:* ${contactMethodIcon} ${formData.contactPreference}\n` +
+          `*Address:* ${formData.address}\n\n` +
+          
+          `*Pets Onsite:* ${formData.pets ? 'Yes' : 'No'}\n` +
+          `*Key Access:* ${formData.securityKeys ? 'Yes' : 'No'}\n` +
+          `*Secure Fence:* ${formData.fence ? 'Yes' : 'No'}\n\n` +
+          
+          `*Additional Notes:* ${formData.additionalNotes || 'None'}\n\n` +
+          
+          `━━━━━━━━━━━━━━━━━━━━━\n` +
+          `⚡ *Please contact customer within 24 hours* ⚡\n` +
+          `━━━━━━━━━━━━━━━━━━━━━`;
+
+        const encodedMessage = encodeURIComponent(whatsappMessage);
+
+        window.open(`https://wa.me/${whatsappNumber}?text=${encodedMessage}`, '_blank');
+        
+        toast.success('Quotation sent to backend and WhatsApp!');
+        handleQuotationSuccess();
+      } catch (error) {
+        console.error('Error sending WhatsApp:', error);
+        toast.error('Quotation saved but WhatsApp failed to open');
+      }
+    }
+    
+    setIsSubmitting(false);
+  };
+
+  if (bookingStep === 'service') {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-slate-50 py-6 px-4 md:pb-20">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
+            <div className="text-center md:text-left">
+                <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-1 tracking-tight">
+                    Choose Your <span className="text-orange-600">Cleaning Service</span>
+                </h1>
+                <p className="text-slate-500 text-lg">Request a quotation for your cleaning needs</p>
+            </div>
+            
+            {/* My Quotations Button with Red Bubble */}
+            <div className="relative">
+              <button 
+                onClick={() => {
+                  if (!user) {
+                    setShowAuthModal(true); // Show auth overlay for unauthenticated users
+                  } else {
+                    setShowMyQuotations(true);
+                  }
+                }}
+                className="bg-black text-white px-6 py-3 rounded-full font-black text-sm uppercase flex items-center gap-2 hover:bg-slate-800 transition-all shadow-lg"
+              >
+                <FaHistory /> My Quotations
+              </button>
+              {pendingApprovedCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold h-6 w-6 rounded-full flex items-center justify-center animate-pulse border-2 border-white">
+                  {pendingApprovedCount}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Service Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-24">
+            {services.map((service, index) => {
+              const theme = CARD_THEMES[index % CARD_THEMES.length];
+              
+              // Create WhatsApp message with service name in bold (**)
+              const whatsappMessage = `Hello! I'm interested in your *${service.name}* service. Could you provide more details?`;
+              const encodedMessage = encodeURIComponent(whatsappMessage);
+              const whatsappLink = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
+              
+              return (
+                <motion.div
+                  key={service.id}
+                  whileHover={{ y: -12, scale: 1.02, boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.15)" }}
+                  transition={{ type: 'spring', stiffness: 260, damping: 20, mass: 1 }}
+                  className={`group mb-12 h-[28rem] bg-white rounded-md md:rounded-xl shadow-xl shadow-slate-200/50 overflow-hidden border-2 border-transparent transition-colors duration-500 flex flex-col ${theme.border} cursor-pointer`}
+                >
+                  <div className="relative aspect-video overflow-hidden" onClick={() => setSelectedService(service)}>
+                    <motion.img 
+                      src={service.image} 
+                      className="w-full h-full object-cover" 
+                      alt={service.name} 
+                      whileHover={{ scale: 1.1 }} 
+                      transition={{ duration: 0.6, ease: [0.33, 1, 0.68, 1] }} 
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-500" />
+                    
+                    {/* WhatsApp Button Overlay */}
+                    <a
+                      href={whatsappLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute top-3 right-3 p-2 bg-green-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-green-600 shadow-lg z-10"
+                    >
+                      <FaWhatsapp size={20} />
+                    </a>
+                  </div>
+                  
+                  <div className="p-3 flex flex-col flex-grow">
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-black text-slate-900 mb-3 transition-colors duration-300 group-hover:text-orange-600">
+                        {service.name}
+                      </h3>
+                      {/* Optional: Add a small WhatsApp button for mobile/always visible */}
+                      <a
+                        href={whatsappLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="md:hidden p-2 bg-green-500 text-white rounded-full hover:bg-green-600 transition-all shadow-lg"
+                      >
+                        <FaWhatsapp size={16} />
+                      </a>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-1.5 mb-4">
+                      {service.tasks?.slice(0, 4).map((task, tIdx) => (
+                        <span key={tIdx} className={`px-2 py-0.5 rounded-md text-[8.5px] font-bold uppercase tracking-wider border ${theme.bg} ${theme.text} border-current/10`}>
+                          {task.name}
+                        </span>
+                      ))}
+                    </div>
+                    
+                    <p className="text-slate-500 text-xs mb-3 line-clamp-2 italic leading-relaxed">
+                      "{service.description}"
+                    </p>
+                    
+                    <div className="mt-auto flex gap-2">
+                      <motion.button 
+                        whileTap={{ scale: 0.95 }} 
+                        onClick={() => setSelectedService(service)}
+                        className={`flex-1 py-3 ${theme.btn} text-white rounded-xl text-sm font-black shadow-md ${theme.shadow} flex items-center justify-center gap-2 transition-all`}
+                      >
+                        Request Quotation <FaArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                      </motion.button>
+                      
+                      {/* WhatsApp button next to Request Quotation - visible on desktop */}
+                      <a
+                        href={whatsappLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className={`hidden md:flex p-3 ${theme.btn} text-white rounded-xl shadow-md ${theme.shadow} hover:scale-110 transition-transform items-center justify-center`}
+                        title={`Inquire about ${service.name} on WhatsApp`}
+                      >
+                        <FaWhatsapp size={18} />
+                      </a>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+
+        </div>
+
+        {/* Auth Modal - For unauthenticated users (like decoration) */}
+        <AnimatePresence>
+          {showAuthModal && (
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-md flex items-center justify-center p-4"
+              onClick={() => setShowAuthModal(false)}
+            >
+              <motion.div 
+                initial={{ scale: 0.9, y: 20 }} 
+                animate={{ scale: 1, y: 0 }} 
+                exit={{ scale: 0.9, y: 20 }}
+                className="bg-white w-full max-w-md p-8 rounded-[2.5rem] text-center relative shadow-2xl"
+                onClick={e => e.stopPropagation()}
+              >
+                <button onClick={() => setShowAuthModal(false)} className="absolute top-6 right-6 text-slate-400 hover:text-black transition-all">
+                  <FaTimes size={20}/>
+                </button>
+                <div className="w-20 h-20 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <FaLock size={32}/>
+                </div>
+                <h2 className="text-3xl font-black mb-2">Account <span className="text-orange-600">Required</span></h2>
+                <p className="text-slate-500 mb-8">Sign in to save your quotations and track their status.</p>
+                
+                <div className="space-y-4">
+                  <button 
+                    onClick={handleGoogleSignIn} 
+                    className="w-full py-4 bg-white border-2 border-slate-100 text-slate-900 rounded-2xl font-bold flex items-center justify-center gap-3 hover:border-slate-300 transition-all shadow-sm"
+                  >
+                    <FaGoogle className="text-red-500" /> Continue with Google
+                  </button>
+                  
+                  <button 
+                    onClick={() => router.push('/login')} 
+                    className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-black transition-all shadow-xl"
+                  >
+                    <FaEnvelope /> Email & Password
+                  </button>
+                </div>
+
+                <p className="mt-6 text-slate-400 text-xs font-bold uppercase tracking-widest">Your data is secure</p>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* My Quotations Modal - With hidden orders filtered out */}
+        <AnimatePresence>
+          {showMyQuotations && user && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm flex items-center justify-center md:p-4"
+              onClick={() => setShowMyQuotations(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                className="bg-white w-full max-w-4xl h-[95vh] md:rounded-xl shadow-2xl overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="bg-gradient-to-r from-orange-600 to-orange-500 p-4 md:p-6 text-white flex justify-between items-center sticky top-0 z-10">
+                  <h2 className="text-xl font-black uppercase">My <span className="text-white">Quotations</span></h2>
+                  <div className="flex items-center gap-3">
+                    {/* Restore hidden orders button */}
+                    {hiddenOrderIds.length > 0 && (
+                      <button
+                        onClick={restoreHiddenOrders}
+                        className="text-xs bg-white/20 px-3 py-1 rounded-full hover:bg-white/30 transition-all"
+                      >
+                        Restore all
+                      </button>
+                    )}
+                    <button onClick={() => setShowMyQuotations(false)} className="p-2 bg-white/20 rounded-full hover:bg-white/30 transition-all">
+                      <FaTimes />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="py-10 px-4 md:px-6">
+                  {/* Filter out hidden orders */}
+                  {userQuotations.filter(q => !hiddenOrderIds.includes(q.id!)).length > 0 ? (
+                    <div className="space-y-4">
+                      {userQuotations
+                        .filter(q => !hiddenOrderIds.includes(q.id!))
+                        .map((quotation) => {
+                        const isPending = quotation.status === 'pending';
+                        const isApproved = quotation.status === 'approved';
+                        const isCancelled = quotation.status === 'cancelled';
+                        const cancelledByUser = quotation.cancelledBy === 'customer';
+                        
+                        return (
+                          <div key={quotation.id} className={`p-6 rounded-xl border ${
+                            isPending ? 'bg-orange-50 border-orange-200' :
+                            isApproved ? 'bg-green-50 border-green-200' :
+                            cancelledByUser ? 'bg-purple-50 border-purple-300' : // User cancelled - purple
+                            'bg-red-50 border-red-200' // Admin cancelled - red
+                          }`}>
+                            <div className="flex justify-between items-start mb-3">
+                              <div>
+                                <h3 className="font-bold text-slate-900">{quotation.serviceName}</h3>
+                                <p className="text-xs text-slate-500">
+                                  {quotation.selectedDate} • {quotation.selectedTime}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full ${
+                                  isPending ? 'bg-orange-200 text-orange-700' :
+                                  isApproved ? 'bg-green-200 text-green-700' :
+                                  cancelledByUser ? 'bg-purple-200 text-purple-700' :
+                                  'bg-red-200 text-red-700'
+                                }`}>
+                                  {isCancelled && cancelledByUser ? 'You cancelled' : quotation.status}
+                                </span>
+                                {quotation.sentViaWhatsApp && (
+                                  <span className="text-green-600" title="Sent via WhatsApp">
+                                    <FaWhatsapp size={14} />
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Show approved amount if order is approved */}
+                            {isApproved && quotation.approvedTotal && (
+                              <div className="mb-4 p-4 bg-emerald-100 rounded-lg border border-emerald-300">
+                                <div className="flex items-center gap-2 text-emerald-800">
+                                  <FaDollarSign size={16} />
+                                  <span className="text-xs font-black uppercase">Approved Amount:</span>
+                                </div>
+                                <p className="text-2xl font-black text-emerald-700 mt-1">
+                                  £{quotation.approvedTotal.toFixed(2)}
+                                </p>
+                              </div>
+                            )}
+
+                            <div className="mb-3 text-xs">
+                              <div className="font-bold mb-1">Areas:</div>
+                              <div className="space-y-1">
+                                {quotation.areasList.map((area, idx) => (
+                                  <div key={idx} className="flex justify-between text-slate-600">
+                                    <span>{area.areaName}</span>
+                                    <span>x{area.quantity}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
+                              <div>
+                                <span className="text-slate-400">Total Areas:</span>
+                                <p className="font-bold">{quotation.totalAreas}</p>
+                              </div>
+                              <div>
+                                <span className="text-slate-400">Contact:</span>
+                                <p className="font-bold">{quotation.customerInfo.contactPreference}</p>
+                              </div>
+                            </div>
+
+                            {/* Show cancellation reason if order is cancelled */}
+                            {isCancelled && quotation.cancelReason && (
+                              <div className={`mt-2 p-3 rounded-lg border ${
+                                cancelledByUser 
+                                  ? 'bg-purple-50 border-purple-200' 
+                                  : 'bg-red-50 border-red-200'
+                              }`}>
+                                <div className="flex items-center gap-2 mb-1">
+                                  {cancelledByUser ? (
+                                    <>
+                                      <FaUserTimes className="text-purple-600" size={14} />
+                                      <p className="text-[10px] font-black text-purple-700 uppercase tracking-wider">
+                                        You cancelled this offer:
+                                      </p>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <FaTimesCircle className="text-red-600" size={14} />
+                                      <p className="text-[10px] font-black text-red-700 uppercase tracking-wider">
+                                        Admin Cancellation Reason:
+                                      </p>
+                                    </>
+                                  )}
+                                </div>
+                                <p className={`text-xs ${
+                                  cancelledByUser ? 'text-purple-600' : 'text-red-600'
+                                } mt-1 italic`}>
+                                  "{quotation.cancelReason}"
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Action Buttons - Different for approved vs pending */}
+                            <div className="flex gap-2 mt-3">
+                              {isApproved ? (
+                                <>
+                                  {/* Contact buttons for approved quotations */}
+                                  <a
+                                      href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+                                        `Hi, I got a quotation amount of *£${quotation.approvedTotal?.toFixed(2)}* for ${quotation.serviceName}. *Areas Included:*\n${quotation.areasList.map(area => `• ${area.areaName} (x${area.quantity})`).join('\n')}. \nHow can I pay?`)}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex-1 py-2 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 transition-colors flex items-center justify-center gap-1"
+                                  >
+                                      <FaWhatsapp size={12} /> WhatsApp
+                                  </a>
+
+                                  <a
+                                    href={`tel:${whatsappNumber}`}
+                                    className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
+                                  >
+                                    <FaPhone size={12} /> Call
+                                  </a>
+                                  <a
+                                    href={`mailto:${generalEmail}?subject=Quotation Inquiry: ${quotation.serviceName}&body=Hi, I'm interested in the cleaning quotation for ${quotation.serviceName} scheduled on ${quotation.selectedDate}`}
+                                    className="flex-1 py-2 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-700 transition-colors flex items-center justify-center gap-1"
+                                  >
+                                    <FaEnvelope size={12} /> Email
+                                  </a>
+                                  <button
+                                    onClick={() => {
+                                      setQuotationToDecline(quotation);
+                                      setShowDeclineModal(true);
+                                    }}
+                                    className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                                    title="Decline quotation"
+                                  >
+                                    <FaTimesCircle size={16} />
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  {/* Hide button for non-approved quotations */}
+                                  <button
+                                    onClick={() => handleHideQuotation(quotation.id!)}
+                                    className="flex-1 py-2 bg-red-50 text-red-600 rounded-lg text-xs font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-1"
+                                  >
+                                    <FaEyeSlash size={12} /> Hide from view
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <div className="text-6xl mb-4 opacity-20">🧹</div>
+                      <p className="text-slate-400 font-bold">No quotations found</p>
+                      {hiddenOrderIds.length > 0 && (
+                        <button
+                          onClick={restoreHiddenOrders}
+                          className="mt-4 px-4 py-2 bg-orange-600 text-white rounded-lg text-xs font-bold hover:bg-orange-700 transition-all"
+                        >
+                          Restore hidden quotations
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Decline Reason Modal */}
+        <AnimatePresence>
+          {showDeclineModal && quotationToDecline && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+              onClick={() => {
+                setShowDeclineModal(false);
+                setQuotationToDecline(null);
+                setDeclineReason("");
+              }}
+            >
+              <motion.div
+                initial={{ scale: 0.9 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.9 }}
+                className="bg-white max-w-sm w-full p-6 rounded-2xl shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center">
+                    <FaUserTimes size={20} />
+                  </div>
+                  <h3 className="font-bold text-lg">Decline Quotation?</h3>
+                </div>
+                
+                <p className="text-sm text-slate-500 mb-4">
+                  Please provide a reason for declining this quotation:
+                </p>
+
+                <textarea
+                  value={declineReason}
+                  onChange={(e) => setDeclineReason(e.target.value)}
+                  placeholder="Reason for declining..."
+                  rows={3}
+                  className="w-full p-3 border-2 border-slate-200 rounded-xl text-sm outline-none focus:border-purple-500 transition-all mb-6"
+                  autoFocus
+                />
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowDeclineModal(false);
+                      setQuotationToDecline(null);
+                      setDeclineReason("");
+                    }}
+                    className="flex-1 py-3 bg-slate-100 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeclineQuotation}
+                    className="flex-1 py-3 bg-purple-600 text-white rounded-xl font-bold text-sm hover:bg-purple-700 transition-colors"
+                  >
+                    Decline
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Service Detail Overlay */}
+        <AnimatePresence>
+          {selectedService && (
+            <motion.div 
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm overflow-y-hidden" onClick={() => setSelectedService(null)}>
+                <div className="min-h-screen flex items-center justify-center md:p-2" onClick={e => e.stopPropagation()}>
+                <div className="bg-white md:rounded-lg max-w-4xl w-full h-[98vh] md:max-h-[96vh] overflow-y-auto">
+                    <div className="relative h-64 md:h-80">
+                    <img src={selectedService.image} className="w-full h-full object-cover" alt={selectedService.name}/>
+                    <button onClick={() => setSelectedService(null)} className="absolute top-6 right-6 p-3 bg-white/90 backdrop-blur rounded-full shadow-lg"><FaTimes /></button>
+                    </div>
+                    <div className="p-4 pb-10 md:p-8 md:pt-4">
+                    <h2 className="text-lg md:text-2xl font-black text-slate-900">{selectedService.name}</h2>
+                    <p className="text-slate-600 mb-4 text-xs md:text-sm">{selectedService.description}</p>
+                    <h3 className="font-black mb-2 text-sm text-orange-500 underline uppercase tracking-widest">Select Your Task</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {selectedService.tasks?.map((task, idx) => {
+                        const theme = CARD_THEMES[idx % CARD_THEMES.length];
+                        return(
+                            <div key={idx} className={`${theme.bg} p-4 md:rounded-xl border-2 border-transparent hover:border-orange-500 cursor-pointer transition-all`} onClick={() => {
+                                window.scrollTo({top:0, behavior: "smooth"})
+                                setSelectedTask({ name: task.name, areaIds: task.areaIds });
+                                setBookingStep('tasks');
+                            }}>
+                                <h4 className={`${theme.text} font-bold`}>{task.name}</h4>
+                                <p className="text-sm text-slate-500">{task.areaIds.length} areas included</p>
+                            </div>
+                        )})}
+                    </div>
+                    </div>
+                </div>
+                </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    );
+  }
+
+  if (bookingStep === 'tasks' && selectedTask) {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-slate-50 py-10 md:px-2">
+        <div className="max-w-4xl mx-auto">
+          <button onClick={() => { setBookingStep('service'); setSelectedTask(null); }} className="mx-4 mb-6 flex items-center gap-2 text-slate-600 font-bold hover:text-orange-600 transition-colors uppercase text-sm">← Back to Services</button>
+          <div className="bg-white md:rounded-xl shadow-2xl overflow-hidden">
+            <div className="bg-gradient-to-r from-orange-600 to-orange-500 p-5 text-white">
+              <h2 className="text-lg md:text-2xl font-black">{selectedTask.name}</h2>
+              <p className="opacity-90 text-sm">Select the areas you need cleaned</p>
+            </div>
+            <div className="p-4 md:p-10 grid grid-cols-1 lg:grid-cols-3 gap-5">
+              <div className="md:col-span-2 space-y-1">
+                <h3 className="text-sm text-green-500 font-black uppercase">Select Quantities</h3>
+                <div className="space-y-3">
+                  {selectedTask.areaIds.map((areaId) => {
+                    const area = areas.find(a => a.id === areaId);
+                    if (!area) return null;
+                    const count = selectedTaskAreas[selectedTask.name]?.[areaId] || 0;
+                    
+                    return (
+                      <div key={areaId} className="flex items-center justify-between p-3 bg-slate-50 md:rounded-lg border border-slate-100">
+                        <span className="text-sm font-bold text-slate-700">{area.label}</span>
+                        <div className="flex items-center gap-4">
+                          <button onClick={() => updateAreaCount(selectedTask.name, areaId, false)} disabled={count === 0} className="p-3 bg-white rounded-xl border-2 hover:border-orange-500 disabled:opacity-30"><FaMinus size={12}/></button>
+                          <span className="w-10 text-center text-xl font-black">{count}</span>
+                          <button onClick={() => updateAreaCount(selectedTask.name, areaId, true)} className="p-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition-colors"><FaPlus size={12}/></button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                <h3 className="text-sm text-green-500 font-black uppercase mt-10">Job Notes</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <button onClick={() => setFormData(p => ({...p, pets: !p.pets}))} className={`p-6 rounded-xl border-4 flex flex-col items-center gap-3 transition-all ${formData.pets ? 'border-orange-600 bg-orange-50 text-orange-600' : 'border-slate-100 text-slate-400'}`}>
+                    <FaDog size={24}/><span className="font-bold uppercase text-xs">Pets Onsite</span>
+                  </button>
+                  <button onClick={() => setFormData(p => ({...p, securityKeys: !p.securityKeys}))} className={`p-6 rounded-xl border-4 flex flex-col items-center gap-3 transition-all ${formData.securityKeys ? 'border-orange-600 bg-orange-50 text-orange-600' : 'border-slate-100 text-slate-400'}`}>
+                    <FaKey size={24}/><span className="font-bold uppercase text-xs">Key Access</span>
+                  </button>
+                  <button onClick={() => setFormData(p => ({...p, fence: !p.fence}))} className={`p-6 rounded-xl border-4 flex flex-col items-center gap-3 transition-all ${formData.fence ? 'border-orange-600 bg-orange-50 text-orange-600' : 'border-slate-100 text-slate-400'}`}>
+                    <FaLock size={24}/><span className="font-bold uppercase text-xs">Secure Fence</span>
+                  </button>
+                </div>
+
+                {/* Additional Notes Input */}
+                <div className="mt-6">
+                  <label className="text-sm text-green-500 font-black uppercase mb-2 block">Additional Notes</label>
+                  <textarea
+                    value={formData.additionalNotes}
+                    onChange={(e) => setFormData(p => ({...p, additionalNotes: e.target.value}))}
+                    placeholder="Any special instructions or requirements..."
+                    className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-orange-500 outline-none transition-all min-h-[100px]"
+                  />
+                </div>
+              </div>
+              
+              <div className="lg:col-span-1 space-y-1 mb-5">
+                <h3 className="text-sm font-black uppercase text-xs text-green-500 flex items-center gap-2 mb-1"><FaCalendarAlt/> Preferred Date</h3>
+                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                  <input 
+                    type="date" 
+                    value={formData.date} 
+                    onChange={e => setFormData(p => ({...p, date: e.target.value, timeSlot: ''}))}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full p-4 border rounded-lg font-bold"
+                  />
+                </div>
+                
+                <h3 className="text-sm font-black uppercase text-xs text-green-500 flex items-center gap-2 mt-4 mb-1"><FaClock/> Time Slot</h3>
+                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                  <div className="grid grid-cols-1 gap-2">
+                    {availableTimeSlots.length > 0 ? (
+                      availableTimeSlots.map(slot => (
+                        <button 
+                          key={slot} 
+                          onClick={() => setFormData(p => ({...p, timeSlot: slot}))} 
+                          className={`w-full p-3 rounded-lg border-2 font-bold text-sm transition-all ${formData.timeSlot === slot ? 'bg-orange-600 border-orange-600 text-white shadow-lg' : 'bg-white border-slate-100 hover:border-orange-200'}`}
+                        >
+                          {slot}
+                        </button>
+                      ))
+                    ) : (
+                      <p className="text-sm text-slate-400 text-center py-2">Select a date first</p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="my-4 bg-green-600 p-4 rounded-xl text-white shadow-xl shadow-green-100">
+                  <div className="text-xs font-bold uppercase opacity-80">Total Areas</div>
+                  <div className="text-3xl font-black">{getTotalAreasSelected()}</div>
+                </div>
+                
+                <button 
+                  onClick={() => {setBookingStep('details'); window.scrollTo({top:0, behavior: "smooth"})}} 
+                  disabled={!hasSelectedAreas() || !formData.date || !formData.timeSlot} 
+                  className="w-full py-4 bg-orange-600 text-white rounded-xl font-black shadow-xl hover:bg-orange-700 disabled:bg-slate-200 transition-all uppercase tracking-widest"
+                >
+                  Next Step
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (bookingStep === 'details') {
+    const isFormComplete = formData.fullName && formData.phone && formData.email && formData.address;
+
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-slate-50 py-8 md:px-2">
+        <div className="max-w-3xl mx-auto">
+          <button onClick={() => setBookingStep('tasks')} className="mx-4 mb-6 font-bold text-slate-600 uppercase text-sm">← Back</button>
+          <div className="bg-white md:rounded-xl shadow-2xl overflow-hidden">
+            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-4 text-white">
+              <h2 className="text-lg md:text-2xl font-black">Your Details</h2>
+              <p className="opacity-90">We'll send your quotation to this information</p>
+            </div>
+            <div className="p-8 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Full Name *</label>
+                  <input type="text" value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} className="w-full p-3 bg-slate-50 border-2 border-transparent focus:border-purple-600 rounded-md md:rounded-lg outline-none transition-all" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Phone Number *</label>
+                  <input type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full p-3 bg-slate-50 border-2 border-transparent focus:border-purple-600 rounded-md md:rounded-lg outline-none" />
+                </div>
+                <div className="md:col-span-2 space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email Address *</label>
+                  <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full p-3 bg-slate-50 border-2 border-transparent focus:border-purple-600 rounded-md md:rounded-lg outline-none" />
+                </div>
+                
+                {/* Contact Preference Selection */}
+                <div className="md:col-span-2 space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Preferred Contact Method *</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {contactPreferences.map((pref) => {
+                      const Icon = pref.icon;
+                      const isSelected = formData.contactPreference === pref.value;
+                      return (
+                        <button
+                          key={pref.value}
+                          type="button"
+                          onClick={() => setFormData({...formData, contactPreference: pref.value as 'WhatsApp' | 'Phone Call' | 'Email'})}
+                          className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${
+                            isSelected 
+                              ? 'border-purple-600 bg-purple-50' 
+                              : 'border-slate-200 hover:border-purple-300'
+                          }`}
+                        >
+                          <Icon className={`text-xl ${isSelected ? pref.color : 'text-slate-400'}`} />
+                          <span className={`text-xs font-bold ${isSelected ? 'text-slate-900' : 'text-slate-500'}`}>
+                            {pref.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="md:col-span-2 space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Street Address *</label>
+                  <input type="text" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} className="w-full p-3 bg-slate-50 border-2 border-transparent focus:border-purple-600 rounded-md md:rounded-lg outline-none" />
+                </div>
+              </div>
+
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                <p className="text-xs text-blue-800 font-bold flex items-center gap-2">
+                  <FaWhatsapp className="text-green-600" />
+                  By submitting this form, you agree to receive quotation details via your preferred contact method.
+                </p>
+              </div>
+
+              {!user && (
+                <div className="mt-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                  <p className="text-xs text-amber-800 font-bold mb-3">Quick sign-in to save your information</p>
+                  <button 
+                    onClick={handleGoogleSignIn}
+                    className="w-full py-3 bg-white border-2 border-slate-200 text-slate-900 rounded-xl font-bold flex items-center justify-center gap-3 hover:border-amber-300 transition-all"
+                  >
+                    <FaGoogle className="text-red-500" /> Sign in with Google
+                  </button>
+                </div>
+              )}
+
+              {/* Two buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 mt-8">
+                <button 
+                  onClick={handleGetQuotation}
+                  disabled={!isFormComplete || isSubmitting || !user} 
+                  className="text-xs md:text-sm flex-1 py-4 bg-purple-600 text-white rounded-xl font-black shadow-xl hover:bg-purple-700 disabled:bg-slate-200 transition-all uppercase tracking-widest"
+                >
+                  {isSubmitting ? 'Sending...' : 'Get Quotation'}
+                </button>
+                
+                <button 
+                  onClick={handleSendViaWhatsApp}
+                  disabled={!isFormComplete || isSubmitting || !user} 
+                  className="text-xs md:text-sm flex-1 py-4 bg-green-600 text-white rounded-xl font-black shadow-xl hover:bg-green-700 disabled:bg-slate-200 transition-all uppercase tracking-widest flex items-center justify-center gap-2"
+                >
+                  <FaWhatsapp size={18} />
+                  {isSubmitting ? 'Sending...' : 'Send Quote Via WhatsApp'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  return <div className='min-h-screen h-[100vh] bg-black text-white font-black text-3xl p-5 rounded-md'>No service found</div>;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect } from 'react';
 // Added 'doc', 'updateDoc', 'deleteDoc' for the cancellation and delete features
 import { db, auth } from '@/lib/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -38,13 +38,12 @@ export default function RentalsServiceUi() {
   // State for Cancellation
   const [orderToCancel, setOrderToCancel] = useState<any>(null);
 
-  // Form State - ADDED postalCode
+  // Form State - REMOVED postalCode
   const [formData, setFormData] = useState({
     fullName: '', 
     phone: '', 
     email: '',
     address: '',
-    postalCode: '', // ADDED THIS LINE
     contactPreference: 'WhatsApp'
   });
 
@@ -287,31 +286,13 @@ export default function RentalsServiceUi() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* SHARED ADDRESS & POSTCODE ROW */}
-                    <div className="relative group md:col-span-1">
-                      <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-purple-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">Event Address</label>
+                    {/* ADDRESS FIELD - NOW FULL WIDTH */}
+                    <div className="relative group md:col-span-2">
+                      <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-purple-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">Full Address</label>
                       <div className="relative">
-                        <input type="text" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} placeholder="Full location" className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none focus:border-purple-500" />
+                        <input type="text" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} placeholder="Street address, city, country" className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none focus:border-purple-500" />
                         <FaMapMarkerAlt className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 opacity-50" size={14} />
                       </div>
-                    </div>
-
-                    {/* FIXED BRISTOL POSTAL CODE FIELD - SAME ROW AS ADDRESS */}
-                    <div className="relative group md:col-span-1">
-                      <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-orange-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">Postal Code (Bristol Only)</label>
-                      <input 
-                        type="text" 
-                        value={formData.postalCode || ''} 
-                        onChange={(e) => {
-                          const value = e.target.value.toUpperCase();
-                          setFormData({...formData, postalCode: value});
-                        }} 
-                        placeholder="e.g. BS1 1AA" 
-                        className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-50"
-                      />
-                      {formData.postalCode && !formData.postalCode.startsWith('BS') && (
-                        <p className="text-[9px] font-bold text-red-500 mt-1 ml-1">⚠️ We only serve Bristol area (BS postcodes)</p>
-                      )}
                     </div>
 
                     <div className="relative group">
@@ -321,7 +302,7 @@ export default function RentalsServiceUi() {
 
                     <div className="relative group">
                       <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-purple-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">WhatsApp / Phone</label>
-                      <input type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none focus:border-purple-500" />
+                      <input type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="+44 or your country code" className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none focus:border-purple-500" />
                     </div>
 
                     <div className="relative group">
@@ -345,12 +326,9 @@ export default function RentalsServiceUi() {
                 <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
                   <div><span className="text-slate-500 font-black uppercase text-[10px] block mb-1">Estimated Total</span><span className="text-2xl md:text-3xl font-black text-slate-900 italic">£{totalPrice.toFixed(2)}</span></div>
                   <button onClick={() => { 
-                    // UPDATED VALIDATION - include postalCode and Bristol check
-                    if(!formData.fullName.trim() || !formData.phone.trim() || !formData.email.trim() || !formData.address.trim() || !formData.postalCode?.trim()) {
+                    // UPDATED VALIDATION - removed postalCode check
+                    if(!formData.fullName.trim() || !formData.phone.trim() || !formData.email.trim() || !formData.address.trim()) {
                         return toast.error("Please fill in all contact and delivery fields");
-                    }
-                    if(!formData.postalCode?.toUpperCase().startsWith('BS')) {
-                        return toast.error("We only serve Bristol area (BS postcodes)");
                     }
                     if(!user) return setShowAuthOverlay(true); 
                     setShowPaymentModal(true); 

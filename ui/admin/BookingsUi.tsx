@@ -32,17 +32,31 @@ export default function ServicesPageUi() {
     return () => unsubAuth();
   }, []);
 
-  // 2. Real-time Notification Listeners with Index-Error Protection
+  // 2. Real-time Notification Listeners
   useEffect(() => {
     if (!user) return;
 
     const ADMIN_UID = '0dHC0QPxyTRuMiCVhiktIOlg2603';
     const isActuallyAdmin = user.uid === ADMIN_UID;
 
+    // Define categories with their collections and statuses to track
     const categories = [
-      { id: 'cleaning', col: 'cleaning_orders', statusMatch: ["paid", "processing", "confirmed"] },
-      { id: 'rentals', col: 'renting_orders', statusMatch: ["paid", "processing", "confirmed", "undelivered"] },
-      { id: 'decoration', col: 'decoration_bookings', statusMatch: ["pending"] }
+      { 
+        id: 'cleaning', 
+        col: 'cleaning_orders', 
+        statusMatch: ["pending", "processing", "confirmed"] // Track these statuses
+      },
+      { 
+        id: 'rentals', 
+        col: 'renting_orders', 
+        // Track everything EXCEPT delivered and cancelled
+        excludeStatus: ["delivered", "cancelled"] 
+      },
+      { 
+        id: 'decoration', 
+        col: 'decoration_bookings', 
+        statusMatch: ["pending"] 
+      }
     ];
 
     const unsubs = categories.map(cat => {
@@ -53,10 +67,21 @@ export default function ServicesPageUi() {
         : query(collection(db, cat.col), where("userId", "==", user.uid));
 
       return onSnapshot(q, (snap) => {
-        // This block runs EVERY time a document is added, deleted, or changed
-        const matchingDocs = snap.docs.filter(doc => 
-          cat.statusMatch.includes(doc.data().status)
-        );
+        let matchingDocs;
+        
+        if (cat.id === 'rentals' && cat.excludeStatus) {
+          // For rentals: include everything EXCEPT delivered and cancelled
+          matchingDocs = snap.docs.filter(doc => 
+            !cat.excludeStatus!.includes(doc.data().status)
+          );
+        } else if (cat.statusMatch) {
+          // For other categories: use statusMatch
+          matchingDocs = snap.docs.filter(doc => 
+            cat.statusMatch!.includes(doc.data().status)
+          );
+        } else {
+          matchingDocs = [];
+        }
         
         setCounts(prev => ({ ...prev, [cat.id]: matchingDocs.length }));
       });
@@ -65,10 +90,12 @@ export default function ServicesPageUi() {
     return () => unsubs.forEach(unsub => unsub());
   }, [user]);
 
-
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
     localStorage.setItem('lastVisitedServiceTab', tabId);
+    
+    // Optional: Clear the notification badge when viewing the tab
+    // You can add logic here to mark items as viewed
   };
 
   const tabs = [
@@ -103,7 +130,7 @@ export default function ServicesPageUi() {
               >
                 {tab.label}
 
-                {/* Individual AnimatePresence per tab fixes the visual behavior error */}
+                {/* Individual AnimatePresence per tab */}
                 <AnimatePresence>
                   {counts[tab.id] > 0 && (
                     <motion.span

@@ -50,7 +50,7 @@ const NewsUpdates = () => {
           </div>
 
           {/* Filter Buttons */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap justify-center gap-2">
             {categories.map((cat) => (
               <button
                 key={cat}
