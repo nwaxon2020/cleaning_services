@@ -1021,7 +1021,7 @@ export default function CustomerServicesPage() {
   if (bookingStep === 'tasks' && selectedTask) {
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-slate-50 py-10 md:px-2">
-        <div className="max-w-5xl">
+        <div className="mx-auto max-w-5xl">
           <button onClick={() => { setBookingStep('service'); setSelectedTask(null); }} className="mx-4 mb-6 flex items-center gap-2 text-slate-600 font-bold hover:text-orange-600 transition-colors uppercase text-sm">← Back to Services</button>
           <div className="bg-white md:rounded-xl shadow-2xl overflow-hidden">
             <div className="bg-gradient-to-r from-orange-600 to-orange-500 p-5 text-white">
