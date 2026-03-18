@@ -1208,7 +1208,7 @@ export default function CustomerServicesPage() {
                     href={"/login"}
                     className="my-2 w-full py-3 bg-blue-50 border-2 border-blue-200 text-blue-900 rounded-xl font-bold flex items-center justify-center gap-3 hover:border-blue-500 transition-all"
                   >
-                    <FaEnvelope className="text-red-500" /> Email & Password
+                    <FaEnvelope className="text-blue-500" /> Email & Password
                   </a>
                 </div>
               )}
