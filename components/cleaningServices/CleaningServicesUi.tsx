@@ -5,7 +5,7 @@ import { db, auth } from '@/lib/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, where, doc, getDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { 
   FaTimes, FaPlus, FaMinus, FaDog, FaKey, FaLock,
-  FaCalendarAlt, FaClock, FaArrowRight, FaGoogle, FaHistory, FaEnvelope, FaWhatsapp, FaPhone, FaTrash, FaCheckCircle, FaTimesCircle, FaEyeSlash, FaDollarSign, FaUserTimes, FaEnvelope,
+  FaCalendarAlt, FaClock, FaArrowRight, FaGoogle, FaHistory, FaEnvelope, FaWhatsapp, FaPhone, FaTrash, FaCheckCircle, FaTimesCircle, FaEyeSlash, FaDollarSign, FaUserTimes,
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
