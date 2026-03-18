@@ -28,7 +28,7 @@ export default function ChatUi() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const ADMIN_ID = process.env.NEXT_PUBLIC_ADMIN_ID || '0dHC0QPxyTRuMiCVhiktIOlg2603';
+  const ADMIN_ID = process.env.NEXT_PUBLIC_ADMIN_ID;
   const ADMIN_PIN = process.env.NEXT_PUBLIC_ADMIN_PIN; 
   
   // Guarded isAdmin check
