@@ -1,12 +1,22 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaStar, FaGoogle, FaTrash, FaExclamationTriangle, FaEnvelope } from "react-icons/fa";
+import { FaStar, FaGoogle, FaTrash, FaExclamationTriangle, FaEnvelope, FaSpinner } from "react-icons/fa";
 import { HiShieldCheck } from "react-icons/hi";
 import { auth, db } from "@/lib/firebase";
 import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, User } from "firebase/auth";
-import { collection, addDoc, query, getDocs, orderBy, limit, serverTimestamp, deleteDoc, doc } from "firebase/firestore";
+import { 
+  collection, 
+  addDoc, 
+  query, 
+  orderBy, 
+  limit, 
+  serverTimestamp, 
+  deleteDoc, 
+  doc,
+  onSnapshot 
+} from "firebase/firestore";
 import toast from "react-hot-toast";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
@@ -23,39 +33,46 @@ interface Review {
   rating: number;
   comment: string;
   createdAt: any;
-  isMock?: boolean;
 }
 
-// MOCK REVIEWS FOR SNAPSHOT LOADING
-const MOCK_REVIEWS: Review[] = [
-  {
-    id: "mock-1",
-    userName: "Sarah Jenkins",
-    rating: 5,
-    comment: "The best cleaning service in Boston. My office has never looked this sharp.",
-    createdAt: new Date(),
-    isMock: true,
-    userPhoto: "https://i.pravatar.cc/150?u=sarah"
-  },
-  {
-    id: "mock-2",
-    userName: "David Thompson",
-    rating: 5,
-    comment: "Fast, reliable, and professional. The team arrived exactly on time. Highly recommended.",
-    createdAt: new Date(),
-    isMock: true,
-    userPhoto: "https://i.pravatar.cc/150?u=david"
-  },
-  {
-    id: "mock-3",
-    userName: "Emma Watson",
-    rating: 5,
-    comment: "Absolutely fantastic service. My home has never been cleaner!",
-    createdAt: new Date(),
-    isMock: true,
-    userPhoto: "https://i.pravatar.cc/150?u=emma"
-  }
-];
+// --- LOADING COMPONENT ---
+const ReviewSkeleton = () => (
+  <div className="group relative w-[280px] lg:w-full shrink-0 mx-3 lg:mx-0 p-5 rounded-2xl bg-black/40 border border-white/5 backdrop-blur-md animate-pulse">
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-white/10" />
+        <div className="space-y-2">
+          <div className="w-24 h-3 bg-white/10 rounded" />
+          <div className="flex gap-1">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="w-3 h-3 bg-white/10 rounded" />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-2">
+      <div className="w-full h-3 bg-white/10 rounded" />
+      <div className="w-3/4 h-3 bg-white/10 rounded" />
+    </div>
+  </div>
+);
+
+const LoadingReviews = () => (
+  <div className="flex flex-col gap-4">
+    <ReviewSkeleton />
+    <ReviewSkeleton />
+    <ReviewSkeleton />
+  </div>
+);
+
+const LoadingMarquee = () => (
+  <div className="flex gap-4">
+    <ReviewSkeleton />
+    <ReviewSkeleton />
+    <ReviewSkeleton />
+  </div>
+);
 
 // --- SUB-COMPONENTS (MEMOIZED TO PREVENT LAG) ---
 
@@ -106,43 +123,52 @@ const ReviewCard = React.memo(({ rev, isCurrentUser }: { rev: Review, isCurrentU
 ReviewCard.displayName = "ReviewCard";
 
 const SmartReviewSection = () => {
-  const [reviews, setReviews] = useState<Review[]>(MOCK_REVIEWS); // Start with mock data immediately
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const pathname = usePathname();
 
-  // 1. Optimized Auth Listener
+  // 1. Auth Listener
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => setUser(u));
     return () => unsub();
   }, []);
 
-  // 2. Data Fetching with snapshot
-  const loadData = useCallback(async () => {
-    try {
-      const q = query(collection(db, "reviews"), orderBy("createdAt", "desc"), limit(15));
-      const snap = await getDocs(q);
-      const fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as Review));
-      
-      // Only replace if we have real data, otherwise keep mocks
-      if (fetched.length > 0) {
-        setReviews(fetched);
-      } else {
-        setReviews(MOCK_REVIEWS);
-      }
-    } catch (e) {
-      console.error("Fetch error", e);
-      // Keep mocks on error
-      setReviews(MOCK_REVIEWS);
-    }
-  }, []);
-
+  // 2. REAL-TIME Firestore Listener
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    setLoading(true);
+    
+    // Create query
+    const q = query(
+      collection(db, "reviews"), 
+      orderBy("createdAt", "desc"), 
+      limit(15)
+    );
+    
+    // Set up real-time listener
+    const unsubscribe = onSnapshot(q, 
+      (snapshot) => {
+        const fetched = snapshot.docs.map(doc => ({ 
+          id: doc.id, 
+          ...doc.data() 
+        } as Review));
+        setReviews(fetched);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Real-time fetch error:", error);
+        toast.error("Failed to load reviews");
+        setLoading(false);
+      }
+    );
+
+    // Cleanup listener on unmount
+    return () => unsubscribe();
+  }, []); // Empty dependency array = runs once on mount
 
   // 3. User Review Logic
   const currentUserReview = useMemo(() => 
@@ -162,7 +188,7 @@ const SmartReviewSection = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !comment.trim()) return;
-    setLoading(true);
+    setSubmitting(true);
     try {
       await addDoc(collection(db, "reviews"), {
         userId: user.uid,
@@ -173,37 +199,39 @@ const SmartReviewSection = () => {
         createdAt: serverTimestamp(),
       });
       setComment("");
-      await loadData();
+      setRating(5); // Reset rating to default
       toast.success("Review posted!");
+      // No need to reload data - real-time listener will update automatically
     } catch (e) {
-      toast.error("Error posting");
+      toast.error("Error posting review");
+      console.error(e);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
   const handleDelete = async () => {
     if (!currentUserReview) return;
-    setLoading(true);
+    setSubmitting(true);
     try {
       await deleteDoc(doc(db, "reviews", currentUserReview.id));
       setShowDeleteModal(false);
-      await loadData();
       toast.success("Review deleted");
+      // No need to reload data - real-time listener will update automatically
     } catch (e) {
       toast.error("Delete failed");
+      console.error(e);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
+  // Don't render on pages other than home, about, faq
   if (!["/", "/about", "/faq"].includes(pathname)) return null;
 
   return (
     <section className="relative w-full py-20 overflow-hidden min-h-[600px]">
-      {/* PRO TIP: Use a separate fixed div for the background. 
-        This prevents the "shaking" effect on mobile scrolls.
-      */}
+      {/* Background image */}
       <div 
         className="fixed inset-0 -z-10 pointer-events-none bg-cover bg-center bg-no-repeat will-change-transform"
         style={{ backgroundImage: `url(${SECTION_BG_IMAGE})` }}
@@ -264,11 +292,15 @@ const SmartReviewSection = () => {
                     className="w-full h-32 bg-white/5 border border-white/10 rounded-2xl p-4 text-white text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 transition-all resize-none"
                   />
                   <button 
-                    disabled={loading}
+                    disabled={submitting}
                     type="submit"
-                    className="w-full bg-orange-500 text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition-all active:scale-95 disabled:opacity-50"
+                    className="w-full bg-orange-500 text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {loading ? "Posting..." : "Publish Review"}
+                    {submitting ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <FaSpinner className="animate-spin" /> Posting...
+                      </span>
+                    ) : "Publish Review"}
                   </button>
                 </form>
               )}
@@ -277,33 +309,52 @@ const SmartReviewSection = () => {
 
           {/* RIGHT: REVIEWS DISPLAY */}
           <div className="lg:col-span-7 w-full overflow-hidden">
-            {/* MOBILE MARQUEE (Zero Lag) */}
+            {/* MOBILE MARQUEE (Real-time updates) */}
             <div className="lg:hidden relative">
-              <div className="marquee-container flex">
-                <div className="flex animate-scroll-mobile">
-                  {/* We map twice for a seamless infinite loop */}
-                  {[...reviews, ...reviews].map((rev, i) => (
-                    <ReviewCard key={`${rev.id}-${i}`} rev={rev} isCurrentUser={user?.uid === rev.userId} />
-                  ))}
+              {loading ? (
+                <div className="flex gap-4">
+                  <LoadingMarquee />
                 </div>
-              </div>
+              ) : reviews.length > 0 ? (
+                <div className="marquee-container flex">
+                  <div className="flex animate-scroll-mobile">
+                    {/* Map twice for seamless infinite loop */}
+                    {[...reviews, ...reviews].map((rev, i) => (
+                      <ReviewCard key={`${rev.id}-${i}`} rev={rev} isCurrentUser={user?.uid === rev.userId} />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-16 bg-black/30 rounded-2xl border border-white/5">
+                  <p className="text-slate-400 text-sm">No reviews yet. Be the first to share your experience!</p>
+                </div>
+              )}
             </div>
 
-            {/* DESKTOP VERTICAL (Zero Lag) */}
+            {/* DESKTOP VERTICAL (Real-time updates) */}
             <div className="hidden lg:flex flex-col gap-4 max-h-[650px] overflow-y-auto pr-3 custom-scrollbar">
-              <AnimatePresence mode="popLayout">
-                {reviews.map((rev) => (
-                  <motion.div 
-                    key={rev.id} 
-                    layout
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                  >
-                    <ReviewCard rev={rev} isCurrentUser={user?.uid === rev.userId} />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
+              {loading ? (
+                <LoadingReviews />
+              ) : reviews.length > 0 ? (
+                <AnimatePresence mode="popLayout">
+                  {reviews.map((rev) => (
+                    <motion.div 
+                      key={rev.id} 
+                      layout
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <ReviewCard rev={rev} isCurrentUser={user?.uid === rev.userId} />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              ) : (
+                <div className="text-center py-16 bg-black/30 rounded-2xl border border-white/5">
+                  <p className="text-slate-400 text-sm">No reviews yet. Be the first to share your experience!</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -313,19 +364,32 @@ const SmartReviewSection = () => {
       <AnimatePresence>
         {showDeleteModal && (
           <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-6"
           >
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+              initial={{ scale: 0.9, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }}
               className="bg-zinc-900 border border-white/10 p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl"
             >
               <FaExclamationTriangle className="text-red-500 text-5xl mx-auto mb-4" />
               <h3 className="text-white font-bold text-xl mb-2">Are you sure?</h3>
               <p className="text-slate-400 text-sm mb-8">This will permanently delete your feedback from our platform.</p>
               <div className="flex gap-4">
-                <button onClick={() => setShowDeleteModal(false)} className="flex-1 py-3 bg-zinc-800 text-white rounded-xl font-bold">Cancel</button>
-                <button onClick={handleDelete} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold">Delete</button>
+                <button 
+                  onClick={() => setShowDeleteModal(false)} 
+                  className="flex-1 py-3 bg-zinc-800 text-white rounded-xl font-bold hover:bg-zinc-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleDelete} 
+                  className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors"
+                >
+                  {submitting ? <FaSpinner className="animate-spin mx-auto" /> : "Delete"}
+                </button>
               </div>
             </motion.div>
           </motion.div>
