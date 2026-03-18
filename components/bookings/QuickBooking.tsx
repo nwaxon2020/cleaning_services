@@ -284,7 +284,7 @@ const DecorationItem = ({ item, counts, onToggle,}: any) => {
   const [showDescription, setShowDescription] = useState(false);
   
   return (
-    <div className={`"bg-black/20 p-3 rounded-xl border border-white/5"`}>
+    <div className="bg-black/20 p-3 rounded-md border border-white/5">
       <div className="flex justify-between items-center">
         <div className="flex-1 mr-12">
           <div className="flex justify-between items-start gap-2">
@@ -618,7 +618,7 @@ const QuickBooking = () => {
             const itemTotal = (item.price || 0) * quantity;
             const desc = item.description ? ` - ${item.description.substring(0, 50)}${item.description.length > 50 ? '...' : ''}` : '';
             const categoryInfo = item.categoryName ? ` (${item.categoryName})` : '';
-            return `  • *${item.name}*${categoryInfo}: \n- QTY: *${quantity}*\n- @ £${item.price} = *£${itemTotal.toFixed(2)}*\n${desc}`;
+            return `  • *${item.name}*${categoryInfo}: \n- Qty: *${quantity}*\n- @ £${item.price} = *£${itemTotal.toFixed(2)}*\n${desc}\n`;
           })
           .join('\n');
       } else if (formData.service === 'decoration') {
