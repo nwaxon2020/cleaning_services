@@ -517,8 +517,8 @@ export default function CustomerServicesPage() {
 
   if (bookingStep === 'service') {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-slate-50 py-6 px-4 md:pb-20">
-        <div className="max-w-7xl mx-auto">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-slate-50 py-6 px-4 md:px-14 md:pb-20">
+        <div className="max-w-8xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
             <div className="text-center md:text-left">
                 <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-1 tracking-tight">
