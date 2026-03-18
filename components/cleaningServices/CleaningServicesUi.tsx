@@ -5,7 +5,7 @@ import { db, auth } from '@/lib/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, where, doc, getDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { 
   FaTimes, FaPlus, FaMinus, FaDog, FaKey, FaLock,
-  FaCalendarAlt, FaClock, FaArrowRight, FaGoogle, FaHistory, FaEnvelope, FaWhatsapp, FaPhone, FaTrash, FaCheckCircle, FaTimesCircle, FaEyeSlash, FaDollarSign, FaUserTimes
+  FaCalendarAlt, FaClock, FaArrowRight, FaGoogle, FaHistory, FaEnvelope, FaWhatsapp, FaPhone, FaTrash, FaCheckCircle, FaTimesCircle, FaEyeSlash, FaDollarSign, FaUserTimes, FaEnvelope,
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -1203,6 +1203,13 @@ export default function CustomerServicesPage() {
                   >
                     <FaGoogle className="text-red-500" /> Sign in with Google
                   </button>
+
+                  <a 
+                    href={"/login"}
+                    className="my-2 w-full py-3 bg-blue-50 border-2 border-blue-200 text-blue-900 rounded-xl font-bold flex items-center justify-center gap-3 hover:border-blue-500 transition-all"
+                  >
+                    <FaEnvelope className="text-red-500" /> Email & Password
+                  </a>
                 </div>
               )}
 
