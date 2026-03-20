@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FaFacebook, FaTwitter, FaInstagram, FaGoogle, FaMapMarkerAlt } from 'react-icons/fa';
 import { HiLogout, HiMail, HiTrash } from 'react-icons/hi';
-import { auth, db } from '@/lib/firebase'; // Added db import
-import { doc, onSnapshot } from 'firebase/firestore'; // Added firestore imports
+import { auth, db } from '@/lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { 
   onAuthStateChanged, 
   signInWithPopup, 
@@ -78,6 +78,12 @@ const Footer = () => {
     } catch (e) {
       toast.error("Error signing out");
     }
+  };
+
+  // Handle service click - sets localStorage and navigates to services page
+  const handleServiceClick = (category: string) => {
+    localStorage.setItem('lastVisitedServiceTab', category);
+    router.push('/services');
   };
 
   return (
@@ -169,14 +175,42 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Expertises */}
+          {/* Expertises - Updated with clickable service links */}
           <div>
             <h4 className="text-xs font-black mb-6 text-orange-500 uppercase tracking-[0.2em]">Expertise</h4>
-            <ul className="space-y-3 text-sm text-gray-400">
-              <li className="hover:text-white transition-colors cursor-default">Home Cleaning</li>
-              <li className="hover:text-white transition-colors cursor-default">Commercial Space</li>
-              <li className="hover:text-white transition-colors cursor-default">Deep Sanitization</li>
-              <li className="hover:text-white transition-colors cursor-default">End of Tenancy</li>
+            <ul className="space-y-3 text-sm">
+              <li>
+                <button 
+                  onClick={() => handleServiceClick('cleaning')}
+                  className="text-gray-400 hover:text-orange-500 transition-colors cursor-pointer w-full text-left"
+                >
+                  Cleaning Services
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleServiceClick('rentals')}
+                  className="text-gray-400 hover:text-orange-500 transition-colors cursor-pointer w-full text-left"
+                >
+                  Rental Services
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleServiceClick('decoration')}
+                  className="text-gray-400 hover:text-orange-500 transition-colors cursor-pointer w-full text-left"
+                >
+                  Decoration Services
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleServiceClick('health')}
+                  className="text-gray-400 hover:text-orange-500 transition-colors cursor-pointer w-full text-left"
+                >
+                  Health Services
+                </button>
+              </li>
             </ul>
           </div>
 
@@ -185,17 +219,17 @@ const Footer = () => {
             <h4 className="text-xs font-black text-orange-500 uppercase tracking-[0.2em]">Connect</h4>
             <div className="flex space-x-4">
               {contactInfo.facebook && (
-                <a href={contactInfo.facebook} target="_blank" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-orange-500 hover:text-white transition-all">
+                <a href={contactInfo.facebook} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-orange-500 hover:text-white transition-all">
                   <FaFacebook size={18} />
                 </a>
               )}
               {contactInfo.twitter && (
-                <a href={contactInfo.twitter} target="_blank" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-orange-500 hover:text-white transition-all">
+                <a href={contactInfo.twitter} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-orange-500 hover:text-white transition-all">
                   <FaTwitter size={18} />
                 </a>
               )}
               {contactInfo.instagram && (
-                <a href={contactInfo.instagram} target="_blank" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-orange-500 hover:text-white transition-all">
+                <a href={contactInfo.instagram} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-orange-500 hover:text-white transition-all">
                   <FaInstagram size={18} />
                 </a>
               )}
