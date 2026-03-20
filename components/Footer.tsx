@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { FaFacebook, FaTwitter, FaInstagram, FaGoogle, FaMapMarkerAlt } from 'react-icons/fa';
 import { HiLogout, HiMail, HiTrash } from 'react-icons/hi';
 import { auth, db } from '@/lib/firebase';
@@ -20,6 +20,7 @@ const Footer = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isEmailUser, setIsEmailUser] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
 
   // --- DYNAMIC DATA STATES ---
   const [siteSettings, setSiteSettings] = useState<any>({});
@@ -57,6 +58,14 @@ const Footer = () => {
     };
   }, []);
 
+  // Scroll to top function
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
+
   const handleGoogleAuth = async () => {
     const provider = new GoogleAuthProvider();
     try {
@@ -80,10 +89,34 @@ const Footer = () => {
     }
   };
 
-  // Handle service click - sets localStorage and navigates to services page
+  // Handle service click - works both on services page and other pages
   const handleServiceClick = (category: string) => {
+    // Set the localStorage for the active tab
     localStorage.setItem('lastVisitedServiceTab', category);
-    router.push('/services');
+    
+    // If already on services page, just refresh to update the active tab
+    if (pathname === '/services') {
+      // Force a page reload to trigger the services page to read the new localStorage
+      window.location.reload();
+      // Scroll to top after reload
+      setTimeout(scrollToTop, 100);
+    } else {
+      // If on another page, navigate to services
+      router.push('/services');
+      // Scroll to top after navigation
+      setTimeout(scrollToTop, 100);
+    }
+  };
+
+  // Handle navigation link click (for normal links)
+  const handleNavClick = (href: string) => {
+    if (pathname !== href) {
+      router.push(href);
+      setTimeout(scrollToTop, 100);
+    } else {
+      // If already on the page, just scroll to top
+      scrollToTop();
+    }
   };
 
   return (
@@ -153,6 +186,7 @@ const Footer = () => {
                       <Link 
                         href="/delete-account" 
                         className="flex items-center gap-1 text-zinc-500 hover:text-red-500 text-[9px] font-black uppercase tracking-tighter transition-colors"
+                        onClick={scrollToTop}
                       >
                         <HiTrash size={12} /> Delete Data
                       </Link>
@@ -167,11 +201,46 @@ const Footer = () => {
           <div>
             <h4 className="text-xs font-black mb-6 text-orange-500 uppercase tracking-[0.2em]">Navigation</h4>
             <ul className="space-y-3">
-              <li><Link href="/" className="text-gray-400 hover:text-white text-sm transition-colors">Home</Link></li>
-              <li><Link href="/services" className="text-gray-400 hover:text-white text-sm transition-colors">Services</Link></li>
-              <li><Link href="/about" className="text-gray-400 hover:text-white text-sm transition-colors">About Us</Link></li>
-              <li><Link href="/chat" className="text-gray-400 hover:text-white text-sm transition-colors">Direct Chat</Link></li>
-              <li><Link href="/join-us" className="text-gray-400 hover:text-white text-sm transition-colors">Join Our Team</Link></li>
+              <li>
+                <button 
+                  onClick={() => handleNavClick('/')}
+                  className="text-gray-400 hover:text-white text-sm transition-colors cursor-pointer w-full text-left"
+                >
+                  Home
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleNavClick('/services')}
+                  className="text-gray-400 hover:text-white text-sm transition-colors cursor-pointer w-full text-left"
+                >
+                  Services
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleNavClick('/about')}
+                  className="text-gray-400 hover:text-white text-sm transition-colors cursor-pointer w-full text-left"
+                >
+                  About Us
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleNavClick('/chat')}
+                  className="text-gray-400 hover:text-white text-sm transition-colors cursor-pointer w-full text-left"
+                >
+                  Direct Chat
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleNavClick('/join-us')}
+                  className="text-gray-400 hover:text-white text-sm transition-colors cursor-pointer w-full text-left"
+                >
+                  Join Our Team
+                </button>
+              </li>
             </ul>
           </div>
 
@@ -249,7 +318,12 @@ const Footer = () => {
             {siteSettings.footerText || `© ${new Date().getFullYear()} BristolClean. All rights reserved.`}
           </p>
           <div className="flex space-x-6 text-[9px] uppercase font-bold tracking-widest text-gray-600">
-            <Link href="/policy" className="hover:text-white transition-colors">Privacy & Terms</Link>
+            <button 
+              onClick={() => handleNavClick('/policy')}
+              className="hover:text-white transition-colors cursor-pointer"
+            >
+              Privacy & Terms
+            </button>
           </div>
         </div>
       </div>
