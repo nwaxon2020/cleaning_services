@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { FaFacebook, FaTwitter, FaInstagram, FaGoogle, FaMapMarkerAlt } from 'react-icons/fa';
 import { HiLogout, HiMail, HiTrash } from 'react-icons/hi';
-import { auth, db } from '@/lib/firebase'; // Added db import
-import { doc, onSnapshot } from 'firebase/firestore'; // Added firestore imports
+import { auth, db } from '@/lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { 
   onAuthStateChanged, 
   signInWithPopup, 
@@ -20,6 +20,7 @@ const Footer = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isEmailUser, setIsEmailUser] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
 
   // --- DYNAMIC DATA STATES ---
   const [siteSettings, setSiteSettings] = useState<any>({});
@@ -57,6 +58,14 @@ const Footer = () => {
     };
   }, []);
 
+  // Scroll to top function
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
+
   const handleGoogleAuth = async () => {
     const provider = new GoogleAuthProvider();
     try {
@@ -77,6 +86,36 @@ const Footer = () => {
       toast.success("Signed out");
     } catch (e) {
       toast.error("Error signing out");
+    }
+  };
+
+  // Handle service click - works both on services page and other pages
+  const handleServiceClick = (category: string) => {
+    // Set the localStorage for the active tab
+    localStorage.setItem('lastVisitedServiceTab', category);
+    
+    // If already on services page, just refresh to update the active tab
+    if (pathname === '/services') {
+      // Force a page reload to trigger the services page to read the new localStorage
+      window.location.reload();
+      // Scroll to top after reload
+      setTimeout(scrollToTop, 100);
+    } else {
+      // If on another page, navigate to services
+      router.push('/services');
+      // Scroll to top after navigation
+      setTimeout(scrollToTop, 100);
+    }
+  };
+
+  // Handle navigation link click (for normal links)
+  const handleNavClick = (href: string) => {
+    if (pathname !== href) {
+      router.push(href);
+      setTimeout(scrollToTop, 100);
+    } else {
+      // If already on the page, just scroll to top
+      scrollToTop();
     }
   };
 
@@ -147,6 +186,7 @@ const Footer = () => {
                       <Link 
                         href="/delete-account" 
                         className="flex items-center gap-1 text-zinc-500 hover:text-red-500 text-[9px] font-black uppercase tracking-tighter transition-colors"
+                        onClick={scrollToTop}
                       >
                         <HiTrash size={12} /> Delete Data
                       </Link>
@@ -161,22 +201,85 @@ const Footer = () => {
           <div>
             <h4 className="text-xs font-black mb-6 text-orange-500 uppercase tracking-[0.2em]">Navigation</h4>
             <ul className="space-y-3">
-              <li><Link href="/" className="text-gray-400 hover:text-white text-sm transition-colors">Home</Link></li>
-              <li><Link href="/services" className="text-gray-400 hover:text-white text-sm transition-colors">Services</Link></li>
-              <li><Link href="/about" className="text-gray-400 hover:text-white text-sm transition-colors">About Us</Link></li>
-              <li><Link href="/chat" className="text-gray-400 hover:text-white text-sm transition-colors">Direct Chat</Link></li>
-              <li><Link href="/join-us" className="text-gray-400 hover:text-white text-sm transition-colors">Join Our Team</Link></li>
+              <li>
+                <button 
+                  onClick={() => handleNavClick('/')}
+                  className="text-gray-400 hover:text-white text-sm transition-colors cursor-pointer w-full text-left"
+                >
+                  Home
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleNavClick('/services')}
+                  className="text-gray-400 hover:text-white text-sm transition-colors cursor-pointer w-full text-left"
+                >
+                  Services
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleNavClick('/about')}
+                  className="text-gray-400 hover:text-white text-sm transition-colors cursor-pointer w-full text-left"
+                >
+                  About Us
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleNavClick('/chat')}
+                  className="text-gray-400 hover:text-white text-sm transition-colors cursor-pointer w-full text-left"
+                >
+                  Direct Chat
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleNavClick('/join-us')}
+                  className="text-gray-400 hover:text-white text-sm transition-colors cursor-pointer w-full text-left"
+                >
+                  Join Our Team
+                </button>
+              </li>
             </ul>
           </div>
 
-          {/* Expertises */}
+          {/* Expertises - Updated with clickable service links */}
           <div>
             <h4 className="text-xs font-black mb-6 text-orange-500 uppercase tracking-[0.2em]">Expertise</h4>
-            <ul className="space-y-3 text-sm text-gray-400">
-              <li className="hover:text-white transition-colors cursor-default">Home Cleaning</li>
-              <li className="hover:text-white transition-colors cursor-default">Commercial Space</li>
-              <li className="hover:text-white transition-colors cursor-default">Deep Sanitization</li>
-              <li className="hover:text-white transition-colors cursor-default">End of Tenancy</li>
+            <ul className="space-y-3 text-sm">
+              <li>
+                <button 
+                  onClick={() => handleServiceClick('cleaning')}
+                  className="text-gray-400 hover:text-orange-500 transition-colors cursor-pointer w-full text-left"
+                >
+                  Cleaning Services
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleServiceClick('rentals')}
+                  className="text-gray-400 hover:text-orange-500 transition-colors cursor-pointer w-full text-left"
+                >
+                  Rental Services
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleServiceClick('decoration')}
+                  className="text-gray-400 hover:text-orange-500 transition-colors cursor-pointer w-full text-left"
+                >
+                  Decoration Services
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleServiceClick('health')}
+                  className="text-gray-400 hover:text-orange-500 transition-colors cursor-pointer w-full text-left"
+                >
+                  Health Services
+                </button>
+              </li>
             </ul>
           </div>
 
@@ -185,17 +288,17 @@ const Footer = () => {
             <h4 className="text-xs font-black text-orange-500 uppercase tracking-[0.2em]">Connect</h4>
             <div className="flex space-x-4">
               {contactInfo.facebook && (
-                <a href={contactInfo.facebook} target="_blank" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-orange-500 hover:text-white transition-all">
+                <a href={contactInfo.facebook} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-orange-500 hover:text-white transition-all">
                   <FaFacebook size={18} />
                 </a>
               )}
               {contactInfo.twitter && (
-                <a href={contactInfo.twitter} target="_blank" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-orange-500 hover:text-white transition-all">
+                <a href={contactInfo.twitter} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-orange-500 hover:text-white transition-all">
                   <FaTwitter size={18} />
                 </a>
               )}
               {contactInfo.instagram && (
-                <a href={contactInfo.instagram} target="_blank" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-orange-500 hover:text-white transition-all">
+                <a href={contactInfo.instagram} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-orange-500 hover:text-white transition-all">
                   <FaInstagram size={18} />
                 </a>
               )}
@@ -215,7 +318,12 @@ const Footer = () => {
             {siteSettings.footerText || `© ${new Date().getFullYear()} BristolClean. All rights reserved.`}
           </p>
           <div className="flex space-x-6 text-[9px] uppercase font-bold tracking-widest text-gray-600">
-            <Link href="/policy" className="hover:text-white transition-colors">Privacy & Terms</Link>
+            <button 
+              onClick={() => handleNavClick('/policy')}
+              className="hover:text-white transition-colors cursor-pointer"
+            >
+              Privacy & Terms
+            </button>
           </div>
         </div>
       </div>
