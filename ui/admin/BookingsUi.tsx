@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db, auth } from '@/lib/firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
 import RentalsBooking from '@/components/bookings/admin/RentalsBooking';
 import CleaningBooking from '@/components/bookings/admin/CleaningBooking';
 import DecorationBooking from '@/components/bookings/admin/DecorationBooking';
@@ -21,7 +21,9 @@ export default function ServicesPageUi() {
 
   // 1. Auth & Initial Hydration
   useEffect(() => {
-    const unsubAuth = auth.onAuthStateChanged((u) => setUser(u));
+    const unsubAuth = auth.onAuthStateChanged((u) => {
+      setUser(u);
+    });
     
     const savedTab = localStorage.getItem('lastVisitedServiceTab');
     if (savedTab) {
@@ -36,55 +38,44 @@ export default function ServicesPageUi() {
   useEffect(() => {
     if (!user) return;
 
-    const ADMIN_UID = '0dHC0QPxyTRuMiCVhiktIOlg2603';
+    // Get admin UID from rules
+    const ADMIN_UID = 'BOCsVJ6dNzWC1HDrEM2TsisbalF3';
     const isActuallyAdmin = user.uid === ADMIN_UID;
 
-    // Define categories with their collections and statuses to track
+    // Define categories with their collection names
     const categories = [
-      { 
-        id: 'cleaning', 
-        col: 'cleaning_orders', 
-        statusMatch: ["pending", "processing", "confirmed"] // Track these statuses
-      },
-      { 
-        id: 'rentals', 
-        col: 'renting_orders', 
-        // Track everything EXCEPT delivered and cancelled
-        excludeStatus: ["delivered", "cancelled"] 
-      },
-      { 
-        id: 'decoration', 
-        col: 'decoration_bookings', 
-        statusMatch: ["pending"] 
-      }
+      { id: 'cleaning', col: 'cleaning_orders' },
+      { id: 'rentals', col: 'renting_orders' },
+      { id: 'decoration', col: 'decoration_bookings' }
     ];
 
     const unsubs = categories.map(cat => {
-      // REAL-TIME QUERY:
-      // Admin listens to the whole collection. User listens to only their ID.
-      const q = isActuallyAdmin 
-        ? query(collection(db, cat.col)) 
-        : query(collection(db, cat.col), where("userId", "==", user.uid));
+      let q;
+      
+      if (isActuallyAdmin) {
+        // Admin: can query the entire collection
+        q = query(collection(db, cat.col));
+      } else {
+        // Regular user: only their own documents (filtered by userId)
+        q = query(collection(db, cat.col), where("userId", "==", user.uid));
+      }
 
-      return onSnapshot(q, (snap) => {
-        let matchingDocs;
-        
-        if (cat.id === 'rentals' && cat.excludeStatus) {
-          // For rentals: include everything EXCEPT delivered and cancelled
-          matchingDocs = snap.docs.filter(doc => 
-            !cat.excludeStatus!.includes(doc.data().status)
-          );
-        } else if (cat.statusMatch) {
-          // For other categories: use statusMatch
-          matchingDocs = snap.docs.filter(doc => 
-            cat.statusMatch!.includes(doc.data().status)
-          );
-        } else {
-          matchingDocs = [];
+      return onSnapshot(q, 
+        (snapshot) => {
+          // Count documents with status "pending"
+          const pendingCount = snapshot.docs.filter(doc => {
+            const data = doc.data();
+            return data.status === 'pending';
+          }).length;
+          
+          setCounts(prev => ({ ...prev, [cat.id]: pendingCount }));
+        },
+        (error) => {
+          // Silently fail - don't show errors in console for non-critical feature
+          console.warn(`Could not fetch ${cat.col} counts:`, error.message);
+          setCounts(prev => ({ ...prev, [cat.id]: 0 }));
         }
-        
-        setCounts(prev => ({ ...prev, [cat.id]: matchingDocs.length }));
-      });
+      );
     });
 
     return () => unsubs.forEach(unsub => unsub());
@@ -93,9 +84,6 @@ export default function ServicesPageUi() {
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
     localStorage.setItem('lastVisitedServiceTab', tabId);
-    
-    // Optional: Clear the notification badge when viewing the tab
-    // You can add logic here to mark items as viewed
   };
 
   const tabs = [
@@ -110,7 +98,7 @@ export default function ServicesPageUi() {
 
   return (
     <div className="min-h-screen bg-[#020617] text-slate-100">
-      <header className="flex flex-col md:flex-row gap-2 md:gap-6 justify-center md:items-end p-4 md:p-8 pb-4 md:pb-6 text-center md:text-left border-b border-white/5 bg-[#020617] backdrop-blur-xl sticky top-0 z-50">
+      <header className="flex flex-col md:flex-row gap-2 md:gap-6 justify-center md:items-end p-4 md:p-8 pb-4 md:pb-6 text-center md:text-left border-b border-white/5 bg-[#020617] backdrop-blur-xl sticky top-0 z-20">
         
         <h1 className="text-xl md:text-2xl font-black uppercase italic tracking-tighter text-white whitespace-nowrap">
           {activeLabel}<span className="text-blue-500"> Services</span>
@@ -130,7 +118,7 @@ export default function ServicesPageUi() {
               >
                 {tab.label}
 
-                {/* Individual AnimatePresence per tab */}
+                {/* Notification Badge */}
                 <AnimatePresence>
                   {counts[tab.id] > 0 && (
                     <motion.span

@@ -2,9 +2,37 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
-import { FaCalendarCheck, FaStar, FaUsers, FaMoneyBillWave, FaShoppingBag, FaPaintBrush, FaTruck, FaClock, FaCheckCircle, FaTimesCircle, FaHourglassHalf, FaBroom } from 'react-icons/fa';
-import { motion } from 'framer-motion';
+import { 
+  collection, getDocs, query, orderBy, limit, 
+  doc, deleteDoc, updateDoc, onSnapshot, where 
+} from 'firebase/firestore';
+import { 
+  FaCalendarCheck, FaStar, FaUsers, FaMoneyBillWave, 
+  FaShoppingBag, FaPaintBrush, FaTruck, FaClock, 
+  FaCheckCircle, FaTimesCircle, FaHourglassHalf, 
+  FaBroom, FaTrash, FaLock, FaTimes, FaEye
+} from 'react-icons/fa';
+import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
+
+// Add this interface at the top of your file (after imports)
+interface RevenueTransaction {
+  id: string;
+  serviceType: string;
+  customerName: string;
+  contactMethod: string;
+  contactValue?: string;
+  amount: number;
+  items?: Array<{
+    name: string;
+    category?: string;
+    quantity: number;
+    price: number;
+    subtotal: number;
+  }>;
+  completedAt: any;
+  orderId?: string;
+}
 
 export default function AdminDashboardUi() {
   const [stats, setStats] = useState({
@@ -19,6 +47,32 @@ export default function AdminDashboardUi() {
     recentReviews: [] as any[]
   });
   const [loading, setLoading] = useState(true);
+  const [showRevenueModal, setShowRevenueModal] = useState(false);
+  const [revenueFilter, setRevenueFilter] = useState('all');
+  const [revenueTransactions, setRevenueTransactions] = useState<RevenueTransaction[]>([]);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
+  const [passcode, setPasscode] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const ADMIN_PASSCODE = process.env.NEXT_PUBLIC_ADMIN_PIN;
+
+  // Real-time listener for revenue transactions
+  useEffect(() => {
+    const q = query(collection(db, "revenue_transactions"), orderBy("completedAt", "desc"));
+    const unsub = onSnapshot(q, (snap) => {
+      const transactions = snap.docs.map(doc => ({ 
+        id: doc.id, 
+        ...doc.data() 
+      } as RevenueTransaction));
+      setRevenueTransactions(transactions);
+      
+      // Calculate total revenue
+      const totalRevenue = transactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+      setStats(prev => ({ ...prev, revenue: totalRevenue }));
+    });
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -31,7 +85,7 @@ export default function AdminDashboardUi() {
         const reviewsRef = collection(db, 'reviews');
         const applicantsRef = collection(db, 'employment_applications');
 
-        // Get all documents from each collection
+        // Get all documents
         const [canceledSnap, decorationSnap, rentingSnap, cleaningSnap, reviewsSnap, applicantsSnap] = await Promise.all([
           getDocs(canceledRentOrdersRef),
           getDocs(decorationBookingsRef),
@@ -41,7 +95,7 @@ export default function AdminDashboardUi() {
           getDocs(applicantsRef)
         ]);
 
-        // Process each collection with proper typing (using any for admin page)
+        // Process each collection
         const canceledOrders = canceledSnap.docs.map(doc => {
           const data = doc.data() as any;
           return {
@@ -52,7 +106,6 @@ export default function AdminDashboardUi() {
             amount: data.pricePaid || 0,
             refundAmount: data.refundAmount || 0,
             status: 'cancelled',
-            userId: data.userId || data.customerId,
             ...data,
             createdAt: data.canceledAt || data.createdAt
           };
@@ -67,7 +120,6 @@ export default function AdminDashboardUi() {
             userName: data.fullName || 'Anonymous',
             amount: data.bidAmount || 0,
             status: data.status || 'pending',
-            userId: data.userId,
             ...data,
             createdAt: data.createdAt
           };
@@ -82,7 +134,6 @@ export default function AdminDashboardUi() {
             userName: data.fullName || 'Anonymous',
             amount: data.total || 0,
             status: data.status || 'pending',
-            userId: data.userId,
             ...data,
             createdAt: data.createdAt
           };
@@ -95,9 +146,8 @@ export default function AdminDashboardUi() {
             type: 'cleaning',
             serviceType: 'Cleaning',
             userName: data.customerInfo?.fullName || data.userName || 'Anonymous',
-            amount: 0, // Cleaning services are quotation-based, no amount
+            amount: data.approvedTotal || 0,
             status: data.status || 'pending',
-            userId: data.userId,
             ...data,
             createdAt: data.createdAt
           };
@@ -110,7 +160,6 @@ export default function AdminDashboardUi() {
           createdAt: (doc.data() as any).createdAt
         }));
 
-        // Get total applicants count
         const totalApplicants = applicantsSnap.size;
 
         // Combine all bookings for recent list
@@ -121,67 +170,62 @@ export default function AdminDashboardUi() {
           ...cleaningOrders
         ];
 
-        // Sort by createdAt (most recent first) and take top 20
+        // Sort by createdAt
         const sortedBookings = allBookings
-          .filter(b => b.createdAt) // Only include bookings with dates
+          .filter(b => b.createdAt)
           .sort((a, b) => {
             const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
             const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
-            return dateB.getTime() - dateA.getTime(); // Descending order (newest first)
+            return dateB.getTime() - dateA.getTime();
           })
-          .slice(0, 20); // Take only the 20 most recent
+          .slice(0, 20);
 
-        // Calculate revenue and fees
-        let totalRevenue = 0;
+        // Calculate potential revenue (sum of all pending/approved orders)
         let totalPotentialRevenue = 0;
-        let totalServiceFees = 0;
-
-        // Process decoration bookings
         decorationBookings.forEach(booking => {
           const amount = booking.bidAmount || 0;
-          if (booking.status === 'approved') {
-            totalRevenue += amount;
-          }
           if (booking.status === 'pending' || booking.status === 'approved') {
             totalPotentialRevenue += amount;
           }
         });
-
-        // Process renting orders
         rentingOrders.forEach(order => {
           const amount = order.total || 0;
-          if (order.status === 'paid') {
-            totalRevenue += amount;
+          if (order.status === 'pending' || order.status === 'approved') {
+            totalPotentialRevenue += amount;
           }
-          if (order.status === 'paid' || order.status === 'pending') {
+        });
+        cleaningOrders.forEach(order => {
+          const amount = order.approvedTotal || 0;
+          if (order.status === 'pending' || order.status === 'approved') {
             totalPotentialRevenue += amount;
           }
         });
 
-        // Process canceled orders - calculate 15% fee from original price
+        // Calculate service fees from cancelled orders
+        let totalServiceFees = 0;
         canceledOrders.forEach(order => {
           const pricePaid = order.pricePaid || 0;
-          totalServiceFees += pricePaid * 0.15; // 15% fee kept from cancelled orders
+          totalServiceFees += pricePaid * 0.15;
         });
 
-        // Calculate unique users across all collections
+        // Calculate unique users
         const uniqueUsers = new Set();
         decorationBookings.forEach(b => b.userId && uniqueUsers.add(b.userId));
         rentingOrders.forEach(o => o.userId && uniqueUsers.add(o.userId));
         canceledOrders.forEach(o => o.userId && uniqueUsers.add(o.userId));
         cleaningOrders.forEach(o => o.userId && uniqueUsers.add(o.userId));
 
-        setStats({
+        setStats(prev => ({
+          ...prev,
           totalBookings: allBookings.length,
           totalReviews: allReviews.length,
           totalUsers: uniqueUsers.size,
           totalApplicants: totalApplicants,
-          revenue: Math.round(totalRevenue * 100) / 100, // Round to 2 decimals
           potentialRevenue: Math.round(totalPotentialRevenue * 100) / 100,
           serviceFees: Math.round(totalServiceFees * 100) / 100,
-          recentBookings: sortedBookings, // Already sorted newest first
+          recentBookings: sortedBookings,
           recentReviews: allReviews.slice(0, 5)
-        });
+        }));
       } catch (error) {
         console.error('Dashboard Fetch Error:', error);
       } finally {
@@ -191,6 +235,58 @@ export default function AdminDashboardUi() {
 
     fetchDashboardData();
   }, []);
+
+  const handleDeleteTransaction = async () => {
+    if (passcode !== ADMIN_PASSCODE) {
+      toast.error("Invalid Admin Passcode");
+      return;
+    }
+    if (!selectedTransaction) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteDoc(doc(db, "revenue_transactions", selectedTransaction.id));
+      toast.success("Transaction permanently deleted");
+      setShowDeleteModal(false);
+      setSelectedTransaction(null);
+      setPasscode("");
+    } catch (error) {
+      toast.error("Failed to delete");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleClearAll = async () => {
+    if (passcode !== ADMIN_PASSCODE) {
+      toast.error("Invalid Admin Passcode");
+      return;
+    }
+    
+    setIsDeleting(true);
+    try {
+      const transactions = revenueTransactions.filter(t => 
+        revenueFilter === 'all' ? true : t.serviceType?.toLowerCase() === revenueFilter
+      );
+      
+      for (const transaction of transactions) {
+        await deleteDoc(doc(db, "revenue_transactions", transaction.id));
+      }
+      toast.success(`Cleared ${transactions.length} transactions`);
+      setShowDeleteModal(false);
+      setPasscode("");
+    } catch (error) {
+      toast.error("Failed to clear transactions");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const filteredTransactions = revenueTransactions.filter(t => 
+    revenueFilter === 'all' ? true : t.serviceType?.toLowerCase() === revenueFilter
+  );
+
+  const filteredTotal = filteredTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
 
   if (loading) return (
     <div className="flex items-center justify-center h-[60vh]">
@@ -272,15 +368,17 @@ export default function AdminDashboardUi() {
       value: `£${stats.revenue.toLocaleString()}`, 
       icon: FaMoneyBillWave, 
       color: 'from-purple-500 to-pink-500',
-      subtext: `Potential: £${stats.potentialRevenue.toLocaleString()}`
+      subtext: `Potential: £${stats.potentialRevenue.toLocaleString()}`,
+      onClick: () => setShowRevenueModal(true),
+      clickable: true
     },
   ];
 
   return (
     <div className="space-y-6 md:space-y-10 px-3 py-4 md:p-8 bg-black min-h-screen">
       {/* Header */}
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
+      <header className="flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className='text-center'>
           <h1 className="text-3xl md:text-4xl font-black text-white tracking-tighter uppercase">
             Admin <span className="text-orange-500">Dashboard</span>
           </h1>
@@ -303,7 +401,7 @@ export default function AdminDashboardUi() {
         </div>
       </header>
 
-      {/* Stats Grid - Now 5 cards */}
+      {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
         {statCards.map((stat, i) => (
           <motion.div 
@@ -311,27 +409,28 @@ export default function AdminDashboardUi() {
             initial={{ opacity: 0, y: 20 }} 
             animate={{ opacity: 1, y: 0 }} 
             transition={{ delay: i * 0.1 }} 
-            className="bg-zinc-900 border border-white/5 p-4 md:p-6 rounded md:rounded-xl hover:border-orange-500/20 transition-colors"
+            onClick={stat.onClick}
+            className={`bg-zinc-900 border border-white/5 p-4 md:p-6 rounded md:rounded-xl hover:border-orange-500/20 transition-colors ${stat.clickable ? 'cursor-pointer hover:scale-[1.02]' : ''}`}
           >
             <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center mb-3 md:mb-4 text-white`}>
               <stat.icon size={16} className="md:w-5 md:h-5" />
             </div>
             <h3 className="text-xl md:text-2xl font-black text-white">{stat.value}</h3>
-            <p className="text-zinc-500 text-[8px] md:text-[10px] uppercase font-bold tracking-widest">{stat.title}</p>
-            <p className="text-zinc-600 text-[7px] md:text-[8px] uppercase mt-1">{stat.subtext}</p>
+            <p className="text-zinc-500 text-xs uppercase font-bold tracking-widest">{stat.title}</p>
+            <p className="text-orange-500 font-semibold text-[10px] uppercase mt-1">{stat.subtext}</p>
           </motion.div>
         ))}
       </div>
 
       {/* Recent Activity Grid */}
       <div className="grid lg:grid-cols-2 gap-4 md:gap-8">
-        {/* Recent Bookings - 20 items with scroll, newest at top */}
+        {/* Recent Bookings */}
         <div className="bg-zinc-900/50 border border-white/5 rounded-lg md:rounded-xl p-4 md:p-6">
           <h2 className="text-white font-black uppercase text-xs md:text-sm mb-4 md:mb-6 flex items-center gap-2">
             <div className="w-1 h-4 bg-orange-500 rounded-full" /> 
             Recent Activity <span className="text-zinc-500 text-[8px] ml-2">({stats.recentBookings.length} items)</span>
           </h2>
-          <div className="max-h-[500px] md:max-h-[500px] overflow-y-auto pr-1 md:pr-2 custom-scrollbar space-y-2 md:space-y-3">
+          <div className="max-h-[500px] md:max-h-[500px] overflow-y-auto md:pr-2 custom-scrollbar space-y-2 md:space-y-3">
             {stats.recentBookings.length > 0 ? (
               stats.recentBookings.map((booking, index) => (
                 <motion.div 
@@ -390,7 +489,7 @@ export default function AdminDashboardUi() {
             <div className="w-1 h-4 bg-yellow-500 rounded-full" /> 
             Latest Feedback <span className="text-zinc-500 text-[8px] ml-2">({stats.recentReviews.length} items)</span>
           </h2>
-          <div className="max-h-[500px] md:max-h-[500px] overflow-y-auto pr-1 md:pr-2 custom-scrollbar space-y-2 md:space-y-3">
+          <div className="max-h-[500px] md:max-h-[500px] overflow-y-auto md:pr-2 custom-scrollbar space-y-2 md:space-y-3">
             {stats.recentReviews.length > 0 ? (
               stats.recentReviews.map((review, index) => (
                 <motion.div 
@@ -423,6 +522,167 @@ export default function AdminDashboardUi() {
           </div>
         </div>
       </div>
+
+      {/* Revenue Modal */}
+      <AnimatePresence>
+        {showRevenueModal && (
+          <div className="fixed inset-0 z-[300] bg-black/90 backdrop-blur-sm flex items-center justify-center p-2 md:p-4">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-zinc-900 w-full max-w-5xl h-[95vh] md:rounded-xl flex flex-col overflow-hidden border border-white/10"
+            >
+              {/* Modal Header */}
+              <div className="flex justify-between items-center p-2 md:p-6 border-b border-white/10">
+                <div>
+                  <h2 className="md:text-xl font-black text-white uppercase">Revenue <span className="text-green-500">Transactions</span></h2>
+                  <p className="text-zinc-500 font-black text-[11px] mt-1">Total: £{filteredTotal.toLocaleString()}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => {
+                      setPasscode("");
+                      setSelectedTransaction(null);
+                      setShowDeleteModal(true);
+                    }}
+                    className="p-2 md:px-3 bg-red-500/10 text-red-500 rounded-lg text-[10px] font-black uppercase hover:bg-red-500/20 transition-all"
+                  >
+                    Clear All
+                  </button>
+                  <button onClick={() => setShowRevenueModal(false)} className="p-2 hover:bg-white/10 rounded-lg transition-all">
+                    <FaTimes className="text-white" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Filter Tabs */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 p-4 border-b border-white/5">
+                {['all', 'cleaning', 'rentals', 'decoration'].map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => setRevenueFilter(filter)}
+                    className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${
+                      revenueFilter === filter 
+                        ? 'bg-green-600 text-white' 
+                        : 'bg-white/5 text-zinc-400 hover:bg-white/10'
+                    }`}
+                  >
+                    {filter === 'all' ? 'All' : filter}
+                  </button>
+                ))}
+              </div>
+
+              {/* Transactions List */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                {filteredTransactions.length > 0 ? (
+                  filteredTransactions.map((transaction) => (
+                    <div key={transaction.id} className="bg-white/5 rounded-lg p-4 border border-white/10 hover:border-green-500/30 transition-all">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            {getServiceIcon(transaction.serviceType?.toLowerCase())}
+                            <span className="text-white font-bold text-sm uppercase">{transaction.serviceType}</span>
+                            <span className="text-zinc-500 text-[10px]">{formatDate(transaction.completedAt)}</span>
+                          </div>
+                          <p className="text-white text-xs font-bold">{transaction.customerName}</p>
+                          <p className="text-zinc-400 text-[10px]">Contact: {transaction.contactMethod}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-green-500 text-xl font-black">£{transaction.amount.toFixed(2)}</p>
+                          <button 
+                            onClick={() => {
+                              setSelectedTransaction(transaction);
+                              setShowDeleteModal(true);
+                            }}
+                            className="mt-2 text-red-500 hover:text-red-400 text-[10px] flex items-center gap-1"
+                          >
+                            <FaTrash size={10} /> Delete
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Items Details */}
+                      <div className="mt-2 pt-2 border-t border-white/5">
+                        <p className="text-[10px] text-zinc-500 font-black mb-2">Items:</p>
+                        <div className="space-y-1">
+                          {transaction.items?.map((item: any, idx: number) => (
+                            <div key={idx} className="flex justify-between text-[10px]">
+                              <span className="text-white">• <span className="font-black">*{item.name}*</span> {item.category ? `(${item.category})` : ''}</span>
+                              <span className="text-green-400 font-black">*£{item.subtotal?.toFixed(2) || (item.price * item.quantity).toFixed(2)}*</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-2 pt-1 border-t border-white/5 flex justify-between">
+                          <span className="text-[10px] font-black text-zinc-400">Total Paid:</span>
+                          <span className="text-green-500 font-black text-sm">*£{transaction.amount.toFixed(2)}*</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-12">
+                    <p className="text-zinc-500 text-sm">No transactions found</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteModal && (
+          <div className="fixed inset-0 z-[400] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-zinc-900 w-full max-w-md rounded-2xl p-6 text-center border border-white/10"
+            >
+              <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FaLock size={24} />
+              </div>
+              <h2 className="text-xl font-black text-white mb-2">
+                {selectedTransaction ? 'Delete Transaction?' : 'Clear All Transactions?'}
+              </h2>
+              <p className="text-zinc-400 text-xs mb-6">
+                {selectedTransaction 
+                  ? `This will permanently delete the transaction for ${selectedTransaction.customerName}`
+                  : `This will permanently delete ALL ${revenueFilter === 'all' ? '' : revenueFilter} transactions`}
+              </p>
+              <input 
+                type="password" 
+                value={passcode} 
+                onChange={(e) => setPasscode(e.target.value)} 
+                placeholder="Enter Admin Passcode" 
+                className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white text-center text-sm font-bold mb-6 focus:border-red-500 outline-none" 
+                autoFocus 
+              />
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setSelectedTransaction(null);
+                    setPasscode("");
+                  }} 
+                  className="flex-1 py-3 bg-white/5 text-zinc-400 rounded-xl font-black uppercase text-[10px] hover:bg-white/10 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={selectedTransaction ? handleDeleteTransaction : handleClearAll} 
+                  disabled={isDeleting}
+                  className="flex-1 py-3 bg-red-600 text-white rounded-xl font-black uppercase text-[10px] hover:bg-red-700 transition-all disabled:opacity-50"
+                >
+                  {isDeleting ? 'Processing...' : (selectedTransaction ? 'Delete' : 'Clear All')}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Custom Scrollbar Styles */}
       <style jsx global>{`

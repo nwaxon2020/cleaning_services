@@ -4,13 +4,13 @@ import { useState, useEffect, memo } from 'react';
 import { db, auth } from '@/lib/firebase';
 import { 
   collection, query, orderBy, onSnapshot, 
-  addDoc, serverTimestamp, where, doc, updateDoc, deleteDoc 
+  addDoc, serverTimestamp, where, doc, updateDoc, deleteDoc, getDoc
 } from 'firebase/firestore';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { 
   FaWhatsapp, FaComments, FaTimes, FaSpinner, FaExclamationTriangle, 
   FaSearch, FaEdit, FaTrash, FaGoogle, FaEnvelope, FaUserLock, 
-  FaMapMarkerAlt, FaTimesCircle
+  FaMapMarkerAlt, FaTimesCircle, FaBell
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -21,12 +21,18 @@ interface DecorationBooking {
   userId: string;
   serviceName: string;
   status: 'pending' | 'approved' | 'cancelled';
-  createdAt: any; // Using any for the Timestamp compatibility
+  createdAt: any;
   bidAmount: number;
   estimateRange: string;
   date: string;
   time: string;
   cancelReason?: string;
+  fullName?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  contactPreference?: string;
+  notes?: string;
 }
 
 const WHATSAPP_BOILERPLATE = "Hi Isundunrin Rentals, I am interested in your *{{SERVICE}}* service. Could you provide more details?";
@@ -83,6 +89,26 @@ export default function DecorationServicesUi() {
   const [showAuthOverlay, setShowAuthOverlay] = useState(false);
   const [editingBooking, setEditingBooking] = useState<any | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<any | null>(null);
+  const [followUpLoading, setFollowUpLoading] = useState<string | null>(null);
+
+  //time
+  const TIME_SLOTS = [
+    "6:00 AM - 7:00 AM",
+    "7:00 AM - 8:00 AM",
+    "8:00 AM - 9:00 AM",
+    "9:00 AM - 10:00 AM",
+    "10:00 AM - 11:00 AM",
+    "11:00 AM - 12:00 PM",
+    "12:00 PM - 1:00 PM",
+    "1:00 PM - 2:00 PM",
+    "2:00 PM - 3:00 PM",
+    "3:00 PM - 4:00 PM",
+    "4:00 PM - 5:00 PM",
+    "5:00 PM - 6:00 PM",
+    "6:00 PM - 7:00 PM",
+    "7:00 PM - 8:00 PM",
+    "8:00 PM - 9:00 PM"
+  ];
   
   // New state for notification badge
   const [pendingApprovedCount, setPendingApprovedCount] = useState(0);
@@ -102,6 +128,62 @@ export default function DecorationServicesUi() {
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  };
+
+  // Handle follow-up via WhatsApp
+  const handleFollowUp = async (booking: DecorationBooking) => {
+    setFollowUpLoading(booking.id);
+    
+    try {
+      // Get the contact preference from the booking
+      const contactMethod = booking.contactPreference || 'WhatsApp';
+      const contactMethodIcon = contactMethod === 'WhatsApp' ? '📱' : 
+                                contactMethod === 'Phone Call' ? '📞' : '📧';
+      
+      // Calculate price range per unit
+      let priceRangeInfo = '';
+      if (booking.estimateRange) {
+        priceRangeInfo = ` (Estimate Range: ${booking.estimateRange})`;
+      }
+      
+      const whatsappMessage = `*🔔 QUOTATION FOLLOW-UP REQUEST*\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `*📋 QUOTATION INFORMATION*\n` +
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `*Order Ref:* ${booking.id.slice(0, 8).toUpperCase()}\n` +
+        `*Service:* ${booking.serviceName}\n` +
+        `*Status:* ${booking.status || 'Pending'}\n` +
+        `*Offer Amount:* *£${booking.bidAmount}*\n` +
+        `*Estimate Range:* ${booking.estimateRange}\n` +
+        `*Date:* ${booking.date}\n` +
+        `*Time:* ${booking.time}\n\n` +
+        
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `*👤 CUSTOMER DETAILS*\n` +
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `*Name:* ${booking.fullName || 'N/A'}\n` +
+        `*Phone:* ${booking.phone || 'N/A'}\n` +
+        `*Email:* ${booking.email || 'N/A'}\n` +
+        `*Preferred Contact:* ${contactMethodIcon} ${contactMethod}\n` +
+        `*Address:* ${booking.address || 'N/A'}\n\n` +
+        
+        (booking.notes ? `*Additional Notes:* ${booking.notes}\n\n` : '') +
+        
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `⚡ *Please review this quotation and respond at your earliest convenience* ⚡\n` +
+        `━━━━━━━━━━━━━━━━━━━━━`;
+
+      const encodedMessage = encodeURIComponent(whatsappMessage);
+      window.open(`https://wa.me/${contactNumber}?text=${encodedMessage}`, '_blank');
+      
+      toast.success("Follow-up request sent via WhatsApp!");
+      
+    } catch (error) {
+      console.error("Error sending follow-up:", error);
+      toast.error("Failed to send follow-up");
+    } finally {
+      setFollowUpLoading(null);
+    }
   };
 
   // --- AUTH & DATA SYNC ---
@@ -338,7 +420,7 @@ export default function DecorationServicesUi() {
                     <div className="space-y-4">
                       <div className="flex gap-2">
                         <div className="w-1/2">
-                           <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Units/Rooms</label>
+                           <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Unit - {selectedItem.pricePer}</label>
                            <input type="number" min="1" value={formData.quantity} onChange={e => setFormData({...formData, quantity: Number(e.target.value)})} className="w-full p-3 bg-slate-50 border rounded-md md:rounded-xl text-xs font-bold" />
                         </div>
                         <div className="w-1/2">
@@ -370,9 +452,9 @@ export default function DecorationServicesUi() {
                         <div className="w-1/2">
                           <select value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className="w-full p-3 bg-slate-50 border rounded-md md:rounded-xl text-xs font-bold outline-none">
                             <option value="">Select Your Time</option>
-                            <option value="08:00">08:00 AM</option>
-                            <option value="12:00">12:00 PM</option>
-                            <option value="16:00">04:00 PM</option>
+                            {TIME_SLOTS.map(slot => (
+                              <option key={slot} value={slot}>{slot}</option>
+                            ))}
                           </select>
                         </div>
                       </div>
@@ -471,7 +553,7 @@ export default function DecorationServicesUi() {
       <AnimatePresence>
         {showCheckBooking && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[150] bg-slate-900/90 flex items-center justify-center p-2">
-            <div className="bg-white w-full max-w-4xl h-[90vh] rounded-xl px-4 py-6 md:p-10 flex flex-col relative overflow-hidden">
+            <div className="bg-white w-full max-w-4xl h-[95vh] md:h-[90vh] md:rounded-xl px-3 py-6 md:p-10 flex flex-col relative overflow-hidden">
               <button onClick={() => setShowCheckBooking(false)} className="absolute top-6 right-6 text-slate-400 hover:text-red-500 transition-all"><FaTimes size={20} /></button>
               <div className="flex-1 overflow-y-auto custom-scrollbar md:pr-2">
                 <h2 className="text-xl font-black uppercase italic mb-6 border-b pb-2">My <span className="text-purple-600">Quotations</span></h2>
@@ -487,10 +569,10 @@ export default function DecorationServicesUi() {
                     ) : (
                       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
                         <div>
-                          <p className="text-[8px] font-black uppercase text-slate-400">Order Ref: {b.id.slice(0,8).toUpperCase()}</p>
+                          <p className="text-[10px] font-black uppercase text-slate-400">Order Ref: {b.id.slice(0,8).toUpperCase()}</p>
                           <h4 className="text-xs font-black uppercase text-slate-800">{b.serviceName}</h4>
-                          <p className="text-[10px] text-slate-500">Offer: £{b.bidAmount} • {b.date} at {b.time}</p>
-                          <p className="text-[10px] text-slate-400 italic">Estimate was: {b.estimateRange}</p>
+                          <p className="text-xs text-slate-500 font-semibold">Offer: £{b.bidAmount} • {b.date} at {b.time}</p>
+                          <p className="text-xs text-orange-600 italic">Estimate was: {b.estimateRange}</p>
                           
                           {/* Show cancellation reason if order is cancelled */}
                           {b.status === 'cancelled' && (
@@ -522,13 +604,29 @@ export default function DecorationServicesUi() {
                             </button>
                           )}
                           
-                          {/* Delete button - SHOW FOR ALL ORDERS (pending, approved, cancelled) */}
+                          {/* Delete button - SHOW FOR ALL ORDERS */}
                           <button onClick={() => setDeleteConfirm(b)} className="p-2 text-slate-400 hover:text-red-600">
                             <FaTrash size={14}/>
                           </button>
                         </div>
                       </div>
                     )}
+                    
+                    {/* FOLLOW UP BUTTON - Added at the bottom of each quote card */}
+                    <div className="mt-3 pt-2 border-t border-dashed">
+                      <button 
+                        onClick={() => handleFollowUp(b)}
+                        disabled={followUpLoading === b.id}
+                        className="w-full py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all"
+                      >
+                        {followUpLoading === b.id ? (
+                          <FaSpinner className="animate-spin" size={12} />
+                        ) : (
+                          <FaBell size={12} />
+                        )}
+                        Follow Up on Quotation
+                      </button>
+                    </div>
                   </div>
                 )) : ( <div className='flex flex-col items-center justify-center py-24 text-slate-400'><FaSearch size={40} className='mb-4 opacity-10' /><p className='font-black uppercase text-xs tracking-widest'>No quotations found</p></div> )}
               </div>

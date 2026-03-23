@@ -1,14 +1,11 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-// Added 'doc', 'updateDoc', 'deleteDoc' for the cancellation and delete features
 import { db, auth } from '@/lib/firebase';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, where, doc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaPlus, FaMinus, FaTimes, FaShoppingBag, FaSearch, FaEnvelope, FaGoogle, FaUserLock, FaWhatsapp, FaPhone, FaMapMarkerAlt, FaExclamationTriangle, FaTrash } from 'react-icons/fa';
-import PaymentGateway from '@/components/bookings/PaymentGateway'; 
-import ShippingInfo from '@/components/bookings/ShippingInfo';
+import { FaPlus, FaMinus, FaTimes, FaShoppingBag, FaSearch, FaEnvelope, FaGoogle, FaUserLock, FaWhatsapp, FaSpinner, FaMapMarkerAlt, FaExclamationTriangle, FaTrash, FaEyeSlash, FaBell, FaCalendarAlt, FaClock } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -19,33 +16,61 @@ export default function RentalsServiceUi() {
   const [categories, setCategories] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);
   const [cart, setCart] = useState<{ [key: string]: any }>({});
+  const [whatsappNumber, setWhatsappNumber] = useState("+2347034632037");
 
   //route
   const router = useRouter();
   
   // UI States
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedDetailsItem, setSelectedDetailsItem] = useState<any>(null);
   const [showCheckOrder, setShowCheckOrder] = useState(false);
   const [viewableOrders, setViewableOrders] = useState<any[]>([]);
   const [showAuthOverlay, setShowAuthOverlay] = useState(false);
-  
-  // Delete Cancelled Orders or Delivered Orders
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [orderToDelete, setOrderToDelete] = useState<any>(null);
+  const [hiddenOrderIds, setHiddenOrderIds] = useState<string[]>([]);
+  const [showHideConfirm, setShowHideConfirm] = useState(false);
+  const [orderToHide, setOrderToHide] = useState<any>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [followUpLoading, setFollowUpLoading] = useState<string | null>(null);
 
-  // State for Cancellation
-  const [orderToCancel, setOrderToCancel] = useState<any>(null);
+  // Time slots
+  const TIME_SLOTS = [
+    "6:00 AM - 7:00 AM",
+    "7:00 AM - 8:00 AM",
+    "8:00 AM - 9:00 AM",
+    "9:00 AM - 10:00 AM",
+    "10:00 AM - 11:00 AM",
+    "11:00 AM - 12:00 PM",
+    "12:00 PM - 1:00 PM",
+    "1:00 PM - 2:00 PM",
+    "2:00 PM - 3:00 PM",
+    "3:00 PM - 4:00 PM",
+    "4:00 PM - 5:00 PM",
+    "5:00 PM - 6:00 PM",
+    "6:00 PM - 7:00 PM",
+    "7:00 PM - 8:00 PM",
+    "8:00 PM - 9:00 PM"
+  ];
 
-  // Form State - REMOVED postalCode
+  // Form State
   const [formData, setFormData] = useState({
     fullName: '', 
     phone: '', 
     email: '',
     address: '',
-    contactPreference: 'WhatsApp'
+    contactPreference: 'WhatsApp',
+    date: '',
+    time: ''
   });
+
+  // Get today's date in YYYY-MM-DD format for min date attribute
+  const getTodayDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   // Auth Listener
   const [user, setUser] = useState<any>(null);
@@ -64,6 +89,50 @@ export default function RentalsServiceUi() {
     return () => unsub();
   }, []);
 
+  // Load hidden orders from localStorage
+  useEffect(() => {
+    if (user) {
+      const savedHidden = localStorage.getItem(`rental-hidden-orders-${user.uid}`);
+      if (savedHidden) {
+        setHiddenOrderIds(JSON.parse(savedHidden));
+      }
+    } else {
+      setHiddenOrderIds([]);
+    }
+  }, [user]);
+
+  // Save hidden orders to localStorage
+  useEffect(() => {
+    if (user && hiddenOrderIds.length > 0) {
+      localStorage.setItem(`rental-hidden-orders-${user.uid}`, JSON.stringify(hiddenOrderIds));
+    }
+    if (user && hiddenOrderIds.length === 0) {
+      localStorage.removeItem(`rental-hidden-orders-${user.uid}`);
+    }
+  }, [hiddenOrderIds, user]);
+
+  // Fetch WhatsApp number from admin settings
+  useEffect(() => {
+    const fetchContactInfo = async () => {
+      try {
+        const contactRef = doc(db, "settings", "contact_info");
+        const contactSnap = await getDoc(contactRef);
+        
+        if (contactSnap.exists()) {
+          const data = contactSnap.data();
+          const phone = data.generalPhone || "";
+          const formattedPhone = phone.replace(/\s+/g, '').replace(/[^0-9]/g, '');
+          if (formattedPhone) {
+            setWhatsappNumber(formattedPhone);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching contact info:", error);
+      }
+    };
+    fetchContactInfo();
+  }, []);
+
   // --- LOGIC: AUTO-SLIDE HERO ---
   useEffect(() => {
     if (slides.length <= 1) return;
@@ -73,63 +142,96 @@ export default function RentalsServiceUi() {
     return () => clearInterval(interval);
   }, [slides.length]);
 
-  // Fetch User Orders (Live Receipt Data)
+  // Fetch User Orders (Live Receipt Data) - Filter out hidden orders
   useEffect(() => {
     if (!user) return;
     const q = query(collection(db, "renting_orders"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
-      setViewableOrders(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const allOrders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Filter out hidden orders from view
+      setViewableOrders(allOrders.filter(order => !hiddenOrderIds.includes(order.id)));
     });
     return () => unsub();
-  }, [user]);
+  }, [user, hiddenOrderIds]);
 
-  // Logic for the Red Bubble (Active orders only)
-  const activeOrderCount = viewableOrders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled').length;
+  // Active orders count (pending, paid, processing)
+  const activeOrderCount = viewableOrders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled' && o.status !== 'completed').length;
 
   const handleOrdersClick = () => {
     if (!user) setShowAuthOverlay(true);
     else setShowCheckOrder(true);
   };
 
-  // --- LOGIC: CANCELLATION & REFUND CALCULATION ---
-  const handleCancelConfirm = async () => {
-    if (!orderToCancel) return;
-    const refundAmount = orderToCancel.total * 0.85; // 85% of original (15% fee)
+  // Handle hiding order from user view
+  const handleHideOrder = (orderId: string) => {
+    setHiddenOrderIds(prev => [...prev, orderId]);
+    toast.success('Order removed from your view');
+    setShowHideConfirm(false);
+    setOrderToHide(null);
+  };
 
-    try {
-      // 1. Save to canceled_rent_order collection
-      await addDoc(collection(db, "canceled_rent_order"), {
-        originalOrderId: orderToCancel.id,
-        customerName: orderToCancel.fullName,
-        phone: orderToCancel.phone,
-        email: orderToCancel.email,
-        address: orderToCancel.address,
-        items: orderToCancel.items,
-        pricePaid: orderToCancel.total,
-        refundAmount: refundAmount,
-        canceledAt: serverTimestamp()
-      });
-
-      // 2. Update status in original renting_orders collection
-      const orderRef = doc(db, "renting_orders", orderToCancel.id);
-      await updateDoc(orderRef, { status: 'cancelled' });
-
-      toast.success("Order cancelled. Refund processing.");
-      setOrderToCancel(null);
-    } catch (error) {
-      toast.error("Failed to cancel order.");
-      console.error(error);
+  // Restore all hidden orders
+  const restoreHiddenOrders = () => {
+    if (user) {
+      setHiddenOrderIds([]);
+      localStorage.removeItem(`rental-hidden-orders-${user.uid}`);
+      toast.success('All hidden orders restored');
     }
   };
 
-  // --- LOGIC: DELETE CANCELLED ORDER (User View Only) ---
-  const handleDeleteOrder = async (orderId: string) => {
+  // Handle follow-up via WhatsApp
+  const handleFollowUp = async (order: any) => {
+    setFollowUpLoading(order.id);
+    
     try {
-      await deleteDoc(doc(db, "renting_orders", orderId));
-      toast.success("Order removed from your view");
+      // Get the contact preference from the order
+      const contactMethod = order.contactPreference || 'WhatsApp';
+      const contactMethodIcon = contactMethod === 'WhatsApp' ? '📱' : 
+                                contactMethod === 'Phone Call' ? '📞' : '📧';
+      
+      // Prepare items list for the message
+      const itemsList = order.items?.map((item: any) => 
+        `  • *${item.name}*: ${item.quantity}x @ £${item.price} each = *£${(item.price * item.quantity).toFixed(2)}*`
+      ).join('\n');
+      
+      const totalAmount = order.total?.toFixed(2) || '0.00';
+      const orderIdShort = order.id.slice(0, 8).toUpperCase();
+      
+      const whatsappMessage = `*🔔 RENTAL ORDER FOLLOW-UP REQUEST*\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `*📋 ORDER INFORMATION*\n` +
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `*Order ID:* ${orderIdShort}\n` +
+        `*Status:* ${order.status || 'Pending'}\n` +
+        `*Total Amount:* *£${totalAmount}*\n` +
+        `*Date:* ${order.date || 'Not specified'}\n` +
+        `*Time:* ${order.time || 'Not specified'}\n\n` +
+        
+        `*📦 ITEMS ORDERED:*\n${itemsList}\n\n` +
+        
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `*👤 CUSTOMER DETAILS*\n` +
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `*Name:* ${order.fullName || order.customerInfo?.name || 'N/A'}\n` +
+        `*Phone:* ${order.phone || order.customerInfo?.phone || 'N/A'}\n` +
+        `*Email:* ${order.email || order.customerInfo?.email || 'N/A'}\n` +
+        `*Preferred Contact:* ${contactMethodIcon} ${contactMethod}\n` +
+        `*Address:* ${order.address || order.customerInfo?.address || 'N/A'}\n\n` +
+        
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `⚡ *Please follow up on this order at your earliest convenience* ⚡\n` +
+        `━━━━━━━━━━━━━━━━━━━━━`;
+
+      const encodedMessage = encodeURIComponent(whatsappMessage);
+      window.open(`https://wa.me/${whatsappNumber}?text=${encodedMessage}`, '_blank');
+      
+      toast.success("Follow-up request sent via WhatsApp!");
+      
     } catch (error) {
-      toast.error("Failed to delete order");
-      console.error(error);
+      console.error("Error sending follow-up:", error);
+      toast.error("Failed to send follow-up");
+    } finally {
+      setFollowUpLoading(null);
     }
   };
 
@@ -178,6 +280,132 @@ export default function RentalsServiceUi() {
   };
 
   const totalPrice = Object.values(cart).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+  // Prepare order data for submission
+  const prepareOrderData = () => {
+    return {
+      userId: user?.uid,
+      fullName: formData.fullName,
+      phone: formData.phone,
+      email: formData.email,
+      address: formData.address,
+      contactPreference: formData.contactPreference,
+      date: formData.date,
+      time: formData.time,
+      items: Object.values(cart),
+      total: totalPrice,
+      status: 'pending',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+  };
+
+  // Send order to backend (Firestore)
+  const handleSendOrder = async () => {
+    if (!user) {
+      toast.error("Please sign in to place order");
+      setShowAuthOverlay(true);
+      return;
+    }
+
+    if (!formData.fullName.trim() || !formData.phone.trim() || !formData.email.trim() || !formData.address.trim() || !formData.date || !formData.time) {
+      return toast.error("Please fill in all contact, delivery, and scheduling fields");
+    }
+
+    if (Object.keys(cart).length === 0) {
+      return toast.error("Your cart is empty");
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const orderData = prepareOrderData();
+      await addDoc(collection(db, "renting_orders"), orderData);
+      
+      toast.success("Order sent successfully!");
+      
+      // Clear cart and close checkout
+      setCart({});
+      setIsCheckoutOpen(false);
+      localStorage.removeItem('isundunrin_rental_cart');
+      
+    } catch (error) {
+      console.error("Error placing order:", error);
+      toast.error("Failed to place order");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Send order via WhatsApp
+  const handleSendViaWhatsApp = async () => {
+    if (!formData.fullName.trim() || !formData.phone.trim() || !formData.email.trim() || !formData.address.trim() || !formData.date || !formData.time) {
+      return toast.error("Please fill in all contact, delivery, and scheduling fields");
+    }
+
+    if (Object.keys(cart).length === 0) {
+      return toast.error("Your cart is empty");
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Save to backend first (optional - can be removed if you don't want to save)
+      if (user) {
+        const orderData = prepareOrderData();
+        await addDoc(collection(db, "renting_orders"), orderData);
+      }
+
+      // Prepare WhatsApp message
+      const itemsBreakdown = Object.values(cart).map((item: any) => {
+        const category = categories.find(cat => cat.id === item.categoryId);
+        const categoryName = category?.name || '';
+        const itemTotal = item.price * item.quantity;
+        return `  • *${item.name}* ${categoryName ? `(${categoryName})` : ''}\n    *Quantity:* ${item.quantity}x\n    *Price:* £${item.price} each\n    *Subtotal:* *£${itemTotal.toFixed(2)}*`;
+      }).join('\n\n');
+
+      const contactMethodIcon = formData.contactPreference === 'WhatsApp' ? '📱' : 
+                               formData.contactPreference === 'Phone Call' ? '📞' : '📧';
+
+      const whatsappMessage = `*🔔 NEW RENTAL ORDER*\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `*📦 RENTAL ORDER DETAILS*\n` +
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `${itemsBreakdown}\n\n` +
+        `*💰 TOTAL AMOUNT:* *£${totalPrice.toFixed(2)}*\n` +
+        `*📅 PREFERRED DATE:* ${formData.date}\n` +
+        `*⏰ PREFERRED TIME:* ${formData.time}\n\n` +
+        
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `*👤 CUSTOMER INFORMATION*\n` +
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `*Name:* ${formData.fullName}\n` +
+        `*Phone:* ${formData.phone}\n` +
+        `*Email:* ${formData.email}\n` +
+        `*Preferred Contact:* ${contactMethodIcon} ${formData.contactPreference}\n` +
+        `*Address:* ${formData.address}\n\n` +
+        
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `⚡ *Please review and respond within 24 hours* ⚡\n` +
+        `━━━━━━━━━━━━━━━━━━━━━`;
+
+      const encodedMessage = encodeURIComponent(whatsappMessage);
+      window.open(`https://wa.me/${whatsappNumber}?text=${encodedMessage}`, '_blank');
+      
+      toast.success("Order sent via WhatsApp!");
+      
+      // Clear cart and close checkout
+      setCart({});
+      setIsCheckoutOpen(false);
+      localStorage.removeItem('isundunrin_rental_cart');
+      
+    } catch (error) {
+      console.error("Error sending WhatsApp:", error);
+      toast.error("Failed to send order");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const colorThemes = [
     { bg: 'bg-fuchsia-600', lightBg: 'bg-fuchsia-50', border: 'border-fuchsia-600', text: 'text-fuchsia-600', heading: 'text-fuchsia-700', cardBg: 'bg-white', cardBorder: 'border-fuchsia-200', accent: 'fuchsia' },
@@ -276,9 +504,7 @@ export default function RentalsServiceUi() {
                 {/* ITEMS GRID */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-1">{Object.values(cart).map(item => { const itemTheme = colorThemes[categories.findIndex(cat => cat.id === item.categoryId) % colorThemes.length]; return (<div key={item.id} className={`m-1 flex items-center justify-between py-1 px-2 ${itemTheme?.lightBg || 'bg-slate-50'} rounded-lg border transition-transform hover:scale-[1.02]`}><button onClick={() => removeItem(item.id)} className="mr-1 md:mr-2 p-1 text-slate-400 hover:text-red-600"><FaTimes size={12} /></button><div className="flex-1 flex items-center justify-between mr-2 "><h4 className={`font-bold text-slate-800 text-xs uppercase ${itemTheme?.text}`}>{item.name}</h4><p className={`mx-1 text-xs ${itemTheme?.text} font-bold`}>£{item.price}</p></div><div className="flex items-center gap-2 bg-white px-2 py-1 rounded-xl border-2 border-slate-100 shadow-xs"><button onClick={() => updateQty(item.id, -1)} className="text-slate-400 hover:text-red-500 p-1"><FaMinus size={8}/></button><input type="number" min="1" value={item.quantity} onChange={(e) => { const val = parseInt(e.target.value); const sanitizedVal = (isNaN(val) || val < 1) ? 1 : val; setCart(prev => ({ ...prev, [item.id]: { ...prev[item.id], quantity: sanitizedVal } })); }} className="w-12 text-center text-xs font-black bg-transparent outline-none border-none focus:ring-0 p-0" /><button onClick={() => updateQty(item.id, 1)} className={`${itemTheme?.text} hover:opacity-70 p-1`}><FaPlus size={8}/></button></div></div>); })}</div>
                 
-                <ShippingInfo totalPrice={totalPrice} />
-
-                {/* CONTACT FORM DESIGN FROM RENTALS */}
+                {/* CONTACT FORM */}
                 <div className="bg-slate-50/50 p-3 md:p-5 rounded-md border border-slate-200/60 shadow-inner space-y-4">
                   <div className="flex items-center gap-2 mb-2 px-1">
                     <div className="h-2 w-2 bg-purple-600 rounded-full animate-pulse"></div>
@@ -320,19 +546,69 @@ export default function RentalsServiceUi() {
                     </div>
                   </div>
                 </div>
+
+                {/* DATE & TIME SELECTION SECTION */}
+                <div className="bg-slate-50/50 p-3 md:p-5 rounded-md border border-slate-200/60 shadow-inner space-y-4">
+                  <div className="flex items-center gap-2 mb-2 px-1">
+                    <div className="h-2 w-2 bg-blue-600 rounded-full animate-pulse"></div>
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Your Event Date</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="relative group">
+                      <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-blue-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">Preferred Date</label>
+                      <div className="relative">
+                        <input 
+                          type="date" 
+                          value={formData.date} 
+                          onChange={e => setFormData({...formData, date: e.target.value})} 
+                          min={getTodayDate()}
+                          className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none focus:border-blue-500" 
+                        />
+                        <FaCalendarAlt className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-500 opacity-50" size={14} />
+                      </div>
+                    </div>
+
+                    <div className="relative group">
+                      <label className="absolute -top-2 left-3 bg-white px-2 text-[9px] font-black uppercase text-blue-600 z-10 rounded-full border border-slate-300 md:border-slate-100 shadow-sm">Preferred Time</label>
+                      <div className="relative">
+                        <select 
+                          value={formData.time} 
+                          onChange={e => setFormData({...formData, time: e.target.value})} 
+                          className="w-full p-4 bg-white border-2 border-slate-300 md:border-slate-100 rounded-md md:rounded-xl text-xs font-bold outline-none appearance-none focus:border-blue-500"
+                        >
+                          <option value="">Select Time Slot</option>
+                          {TIME_SLOTS.map(slot => (
+                            <option key={slot} value={slot}>{slot}</option>
+                          ))}
+                        </select>
+                        <FaClock className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-500 opacity-50" size={14} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="pt-2 border-t-2 border-dashed border-slate-200 mt-6 bg-white">
                 <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
-                  <div><span className="text-slate-500 font-black uppercase text-[10px] block mb-1">Estimated Total</span><span className="text-2xl md:text-3xl font-black text-slate-900 italic">£{totalPrice.toFixed(2)}</span></div>
-                  <button onClick={() => { 
-                    // UPDATED VALIDATION - removed postalCode check
-                    if(!formData.fullName.trim() || !formData.phone.trim() || !formData.email.trim() || !formData.address.trim()) {
-                        return toast.error("Please fill in all contact and delivery fields");
-                    }
-                    if(!user) return setShowAuthOverlay(true); 
-                    setShowPaymentModal(true); 
-                  }} className="w-full md:w-auto md:px-8 bg-blue-600 text-white py-3 rounded-xl font-bold uppercase italic text-lg shadow-xl hover:bg-blue-700 flex items-center justify-center gap-3 transition-all active:scale-95">Secure Checkout <FaShoppingBag size={14} /></button>
+                  <div><span className="text-slate-500 font-black uppercase text-[10px] block mb-1">Total Amount</span><span className="text-2xl md:text-3xl font-black text-slate-900 italic">£{totalPrice.toFixed(2)}</span></div>
+                  <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                    <button 
+                      onClick={handleSendOrder} 
+                      disabled={isSubmitting}
+                      className="w-full md:w-auto md:px-8 bg-blue-600 text-white py-3 rounded-xl font-black uppercase text-xs tracking-widest shadow-xl hover:bg-blue-700 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      {isSubmitting ? <FaSpinner className="animate-spin" /> : "Send Order"}
+                    </button>
+                    <button 
+                      onClick={handleSendViaWhatsApp} 
+                      disabled={isSubmitting}
+                      className="w-full md:w-auto md:px-8 bg-green-600 text-white py-3 rounded-xl font-black uppercase text-xs tracking-widest shadow-xl hover:bg-green-700 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      <FaWhatsapp size={16} />
+                      {isSubmitting ? "Sending..." : "Order via WhatsApp"}
+                    </button>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -340,147 +616,143 @@ export default function RentalsServiceUi() {
         )}
       </AnimatePresence>
 
-      {/* MY ORDERS MODAL (Live Receipt View) */}
+      {/* MY ORDERS MODAL */}
       <AnimatePresence>
         {showCheckOrder && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[150] bg-slate-900/95 flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-2xl h-[80vh] rounded-xl p-4 md:p-6 flex flex-col relative shadow-2xl overflow-hidden">
-              <button onClick={() => setShowCheckOrder(false)} className="absolute top-6 right-6 md:right-11 text-slate-400 hover:text-red-500 transition-all"><FaTimes size={20} /></button>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[150] bg-slate-900/95 flex items-center justify-center p-2">
+            <div className="bg-white w-full max-w-2xl h-[95vh] md:h-[80vh] md:rounded-xl p-3 md:p-6 flex flex-col relative shadow-2xl overflow-hidden">
+              <div className="flex justify-between items-center mb-4 border-b pb-2">
+                <h2 className="text-xl font-black uppercase italic">My <span className="text-blue-600">Rentals</span></h2>
+                <div className="flex items-center gap-2">
+                  {hiddenOrderIds.length > 0 && (
+                    <button 
+                      onClick={restoreHiddenOrders}
+                      className="text-[10px] bg-slate-100 px-3 py-1 rounded-full font-black uppercase hover:bg-slate-200 transition-all"
+                    >
+                      Restore all
+                    </button>
+                  )}
+                  <button onClick={() => setShowCheckOrder(false)} className="text-slate-400 hover:text-red-500 transition-all"><FaTimes size={20} /></button>
+                </div>
+              </div>
               <div className="flex-1 overflow-y-auto scrollbar-hide md:pr-2">
-                <h2 className="text-xl font-black uppercase italic mb-6 border-b pb-2">My <span className="text-blue-600">Rentals</span></h2>
                 {viewableOrders.length > 0 ? viewableOrders.map(order => (
                   <div key={order.id} className="p-4 bg-slate-50 border border-slate-200 rounded md:rounded-xl mb-4 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                        <div className='flex flex-col'>
-                          <span className="text-[10px] font-black uppercase text-slate-400">Order ID: {order.id.slice(0,8).toUpperCase()}</span>
+                      <div className='flex flex-col'>
+                        <span className="text-[10px] font-black uppercase text-slate-400">Order ID: {order.id.slice(0,8).toUpperCase()}</span>
+                        <button 
+                          onClick={() => router.push(`/receipts/${order.id}`)}
+                          className="mt-2 w-full py-2 bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest rounded-lg flex items-center justify-center gap-2"
+                        >
+                          View Receipt
+                        </button>
+                      </div>
+
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full ${
+                            order.status === 'pending' ? 'bg-orange-100 text-orange-600' : 
+                            order.status === 'approved' ? 'bg-green-100 text-green-600' : 
+                            order.status === 'cancelled' ? 'bg-red-100 text-red-600' : 
+                            order.status === 'delivered' ? 'bg-blue-100 text-blue-600' : 
+                            'bg-gray-100 text-gray-600'
+                          }`}>
+                            {order.status}
+                          </span>
+                          {/* Hide button for all orders */}
                           <button 
-                            onClick={() => router.push(`/receipts/${order.id}`)}
-                            className="mt-2 w-full py-2 bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest rounded-lg flex items-center justify-center gap-2"
+                            onClick={() => {
+                              setOrderToHide(order);
+                              setShowHideConfirm(true);
+                            }}
+                            className="p-2 bg-red-50 text-red-500 hover:bg-red-100 rounded-full transition-all"
+                            title="Hide from view"
                           >
-                            View Receipt
+                            <FaEyeSlash size={12} />
                           </button>
                         </div>
-
-                        <div className="flex flex-col items-end gap-2">
-                            <div className="flex items-center gap-2">
-                                <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full ${order.status === 'paid' ? 'bg-green-100 text-green-600' : order.status === 'cancelled' ? 'bg-red-100 text-red-600' : order.status === 'delivered' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'}`}>
-                                    {order.status}
-                                </span>
-                                {/* DELETE BUTTON - Appears for cancelled AND delivered orders */}
-                                {(order.status === 'cancelled' || order.status === 'delivered') && (
-                                    <button 
-                                        onClick={() => {
-                                          setOrderToDelete(order);
-                                          setShowDeleteConfirm(true);
-                                        }}
-                                        className="p-2 bg-red-50 text-red-500 hover:bg-red-100 rounded-full transition-all"
-                                        title="Delete from view"
-                                    >
-                                        <FaTrash size={12} />
-                                    </button>
-                                )}
-                            </div>
-                            {/* CANCEL BUTTON - Only for non-cancelled, non-delivered orders */}
-                            {order.status !== 'cancelled' && order.status !== 'delivered' && (
-                                <button 
-                                    onClick={() => setOrderToCancel(order)}
-                                    className="my-1 text-[9px] font-black uppercase text-red-500 underline hover:text-red-700 transition-colors"
-                                >
-                                    Cancel Order
-                                </button>
-                            )}
-                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-1">{order.items?.map((item:any, i:number) => ( <p key={i} className="text-xs font-black text-slate-700 uppercase">{item.quantity}x {item.name}</p> ))}</div>
-                    <div className="mt-3 pt-2 border-t border-dashed flex justify-between items-center"><span className="text-[9px] font-black uppercase text-slate-400">Delivery to: {order.address?.slice(0,25)}...</span><span className="font-black text-slate-900">£{order.total?.toFixed(2)}</span></div>
+                    <div className="space-y-1">
+                      {order.items?.map((item:any, i:number) => ( 
+                        <p key={i} className="text-xs font-black text-slate-700 uppercase">
+                          {item.quantity}x {item.name}
+                        </p>
+                      ))}
+                    </div>
+                    {order.date && order.time && (
+                      <div className="mt-2 text-[10px] text-slate-500 font-bold uppercase">
+                        <span>📅 {order.date} • ⏰ {order.time}</span>
+                      </div>
+                    )}
+                    <div className="mt-3 pt-2 border-t border-dashed flex justify-between items-center">
+                      <span className="text-[9px] font-black uppercase text-slate-400">Delivery to: {order.address?.slice(0,25)}...</span>
+                      <span className="font-black text-slate-900">£{order.total?.toFixed(2)}</span>
+                    </div>
+                    
+                    {/* FOLLOW UP BUTTON */}
+                    <div className="mt-3 pt-2 border-t border-dashed">
+                      <button 
+                        onClick={() => handleFollowUp(order)}
+                        disabled={followUpLoading === order.id}
+                        className="w-full py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all"
+                      >
+                        {followUpLoading === order.id ? (
+                          <FaSpinner className="animate-spin" size={12} />
+                        ) : (
+                          <FaBell size={12} />
+                        )}
+                        Follow Up on Order
+                      </button>
+                    </div>
                   </div>
-                )) : ( <div className='flex flex-col items-center justify-center py-24 text-slate-400'><FaShoppingBag size={40} className='mb-4 opacity-10' /><p className='font-black uppercase text-xs tracking-widest'>No orders found</p></div> )}
+                )) : ( 
+                  <div className='flex flex-col items-center justify-center py-24 text-slate-400'>
+                    <FaShoppingBag size={40} className='mb-4 opacity-10' />
+                    <p className='font-black uppercase text-xs tracking-widest'>No orders found</p>
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-{/* DELETE CONFIRMATION MODAL */}
-<AnimatePresence>
-  {showDeleteConfirm && orderToDelete && (
-    <div className="fixed inset-0 z-[350] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <motion.div 
-        initial={{ scale: 0.9, opacity: 0 }} 
-        animate={{ scale: 1, opacity: 1 }} 
-        exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-white p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl"
-      >
-        <FaExclamationTriangle className="text-red-500 text-4xl mx-auto mb-4" />
-        <h3 className="font-black uppercase text-sm mb-2">Delete Order?</h3>
-        <p className="text-[10px] text-slate-500 mb-6 uppercase tracking-widest font-bold">
-          This will permanently remove this {orderToDelete.status} order from your view.
-        </p>
-        <div className="flex gap-3">
-          <button 
-            onClick={() => {
-              setShowDeleteConfirm(false);
-              setOrderToDelete(null);
-            }} 
-            className="flex-1 py-3 bg-slate-100 rounded-xl font-black text-[10px] uppercase hover:bg-slate-200 transition-all"
-          >
-            Cancel
-          </button>
-          <button 
-            onClick={() => {
-              handleDeleteOrder(orderToDelete.id);
-              setShowDeleteConfirm(false);
-              setOrderToDelete(null);
-            }} 
-            className="flex-1 py-3 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase hover:bg-red-700 transition-all"
-          >
-            Yes, Delete
-          </button>
-        </div>
-      </motion.div>
-    </div>
-  )}
-</AnimatePresence>
-
-      {/* CANCELLATION OVERLAY DIV */}
+      {/* HIDE CONFIRMATION MODAL */}
       <AnimatePresence>
-        {orderToCancel && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[300] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
-                <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white max-w-sm w-full p-4 md:p-6 rounded-xl shadow-2xl text-center">
-                    <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <FaExclamationTriangle size={24} />
-                    </div>
-                    <h2 className="text-xl font-black uppercase italic mb-4">Refund <span className="text-red-600">Notice</span></h2>
-                    
-                    <div className="bg-slate-50 p-3 rounded-xl mb-6 space-y-2">
-                        <div className="flex justify-between text-[10px] font-bold uppercase text-slate-500">
-                            <span>Paid Amount:</span>
-                            <span>£{orderToCancel.total.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between text-[10px] font-bold uppercase text-red-500">
-                            <span>Service Charge (15%):</span>
-                            <span>- £{(orderToCancel.total * 0.15).toFixed(2)}</span>
-                        </div>
-                        <div className="pt-2 border-t border-dashed border-slate-200 flex justify-between font-black uppercase text-slate-900 italic">
-                            <span>Expected Refund:</span>
-                            <span className="text-lg">£{(orderToCancel.total * 0.85).toFixed(2)}</span>
-                        </div>
-                    </div>
-
-                    <p className="text-[10px] text-slate-400 font-bold uppercase leading-relaxed mb-8 tracking-wider px-2">
-                        Cancelling this order will incur a 15% non-refundable service fee.
-                    </p>
-
-                    <div className="flex flex-col gap-3">
-                        <button onClick={handleCancelConfirm} className="w-full py-4 bg-red-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-red-700 transition-all shadow-lg shadow-red-200">
-                            Proceed to Cancel
-                        </button>
-                        <button onClick={() => setOrderToCancel(null)} className="w-full py-4 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 transition-all">
-                            Keep My Order
-                        </button>
-                    </div>
-                </motion.div>
+        {showHideConfirm && orderToHide && (
+          <div className="fixed inset-0 z-[350] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }} 
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl"
+            >
+              <FaExclamationTriangle className="text-orange-500 text-4xl mx-auto mb-4" />
+              <h3 className="font-black uppercase text-sm mb-2">Hide Order?</h3>
+              <p className="text-[10px] text-slate-500 mb-6 uppercase tracking-widest font-bold">
+                This will hide this order from your view. You can restore it later.
+              </p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => {
+                    setShowHideConfirm(false);
+                    setOrderToHide(null);
+                  }} 
+                  className="flex-1 py-3 bg-slate-100 rounded-xl font-black text-[10px] uppercase hover:bg-slate-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => handleHideOrder(orderToHide.id)} 
+                  className="flex-1 py-3 bg-orange-600 text-white rounded-xl font-black text-[10px] uppercase hover:bg-orange-700 transition-all"
+                >
+                  Yes, Hide
+                </button>
+              </div>
             </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
@@ -501,30 +773,6 @@ export default function RentalsServiceUi() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      <PaymentGateway isOpen={showPaymentModal} onClose={() => setShowPaymentModal(false)} totalAmount={totalPrice} customerOrder={Object.values(cart)} serviceType="Rental Services"
-        onSuccess={async () => { 
-          const docRef = await addDoc(collection(db, "renting_orders"), { 
-            userId: user.uid, 
-            ...formData, 
-            items: Object.values(cart), 
-            total: totalPrice, 
-            status: 'paid', 
-            createdAt: serverTimestamp() 
-          });
-
-          // Clear local state first
-          setCart({}); 
-          setIsCheckoutOpen(false); 
-          setShowPaymentModal(false); 
-          localStorage.removeItem('isundunrin_rental_cart'); 
-
-          // Wait 500ms before redirecting to ensure Firestore index is ready
-          setTimeout(() => {
-            router.push(`/receipts/${docRef.id}`);
-          }, 500);
-        }}
-      />
 
       {/* Sticky Checkout Bar */}
       <AnimatePresence>
