@@ -138,7 +138,7 @@ export default function ServicesPageUi() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto pt-6">
+      <main className="max-w-7xl mx-auto">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}

@@ -290,11 +290,8 @@ export default function AdminCleaningOrders() {
   return (
   <div className="w-full p-4 pt-2 md:p-8 md:pt-4 bg-emerald-50 min-h-screen relative">
     <div className="max-w-6xl mx-auto">
-      <header className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-        <h1 className="text-2xl md:text-3xl font-black text-slate-900">
-          Cleaning <span className="text-emerald-600">Orders</span>
-        </h1>
-        <div className="w-full md:w-auto flex bg-white border rounded-sm md:rounded-xl p-2 md:p-1 shadow-sm overflow-x-auto">
+      <header>
+        <div className="w-full md:w-auto flex justify-between bg-white border rounded-sm md:rounded-xl p-2 md:p-1 shadow-sm overflow-x-auto">
           {['pending', 'approved', 'completed', 'cancelled', 'all'].map((f) => (
             <button
               key={f}
