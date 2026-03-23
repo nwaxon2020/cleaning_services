@@ -531,7 +531,7 @@ export default function AdminDashboardUi() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-zinc-900 w-full max-w-5xl h-[95vh] md:rounded-xl flex flex-col overflow-hidden border border-white/10"
+              className="bg-zinc-900 w-full max-w-5xl h-[90vh] md:h-[95vh] md:rounded-xl flex flex-col overflow-hidden border border-white/10"
             >
               {/* Modal Header */}
               <div className="flex justify-between items-center p-2 md:p-6 border-b border-white/10">
