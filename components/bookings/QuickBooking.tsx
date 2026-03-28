@@ -736,14 +736,14 @@ const QuickBooking = () => {
       <AnimatePresence mode="wait">
         {/*HEADER*/}
         <div>
-          <h1 className="text-xl font-black text-white uppercase py-2 mb-0">Quick Bookings</h1>
-          <span className="text[10px] font-semibold italic text-orange-500 mb-2">Get quick quotations, and faster response within 24-hours</span>
+          <h1 className="text-xl font-black text-white uppercase mb-0">Quick Bookings</h1>
+          <span className="text-[10px] font-semibold italic text-orange-500 pb-6">Get quick quotations, and faster response within 24-hours</span>
         </div>
         
         {/* STEP 1: Contact Information */}
         {step === 1 && (
           <motion.div key="step1" initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -50, opacity: 0 }} className="space-y-4">
-            <h3 className="text-sm font-bold text-white uppercase italic mb-4">Your Contact Info</h3>
+            <h3 className="text-sm font-bold text-white uppercase italic">Your Contact Info</h3>
             <input 
               required 
               type="text" 
