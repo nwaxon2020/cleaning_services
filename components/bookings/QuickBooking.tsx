@@ -734,11 +734,16 @@ const QuickBooking = () => {
   return (
     <div className="bg-black/20 backdrop-blur-lg rounded-xl p-4 md:p-6 border border-white/20 w-full min-h-[400px] flex flex-col justify-between overflow-hidden">
       <AnimatePresence mode="wait">
-
+        {/*HEADER*/}
+        <div>
+          <h1 className="text-xl font-black text-white uppercase py-2 mb-0">Quick Bookings</h1>
+          <span className="text[10px] font-semibold italic text-orange-500 mb-2">Get quick quotations, and faster response within 24-hours</span>
+        </div>
+        
         {/* STEP 1: Contact Information */}
         {step === 1 && (
           <motion.div key="step1" initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -50, opacity: 0 }} className="space-y-4">
-            <h3 className="text-xl font-black text-white uppercase italic mb-4">Your Contact Info</h3>
+            <h3 className="text-sm font-bold text-white uppercase italic mb-4">Your Contact Info</h3>
             <input 
               required 
               type="text" 
@@ -787,7 +792,7 @@ const QuickBooking = () => {
               <button onClick={() => setStep(1)} className="text-white hover:text-orange-500 transition-colors">
                 <FaArrowLeft />
               </button>
-              <h3 className="text-lg font-black text-white uppercase italic">Select Service</h3>
+              <h3 className="text-sm font-bold text-white uppercase italic">Select Service</h3>
             </div>
             
             <div className="grid grid-cols-2 gap-3">
@@ -832,7 +837,7 @@ const QuickBooking = () => {
               <button onClick={() => setStep(2)} className="text-white hover:text-orange-500 transition-colors">
                 <FaArrowLeft />
               </button>
-              <h3 className="text-lg font-black text-white uppercase italic">Select {selectedService.name} Items</h3>
+              <h3 className="text-sm font-bold text-white uppercase italic">Select {selectedService.name} Items</h3>
             </div>
 
             {/* Room/Item Selection */}
@@ -934,7 +939,7 @@ const QuickBooking = () => {
               <button onClick={() => setStep(3)} className="text-white hover:text-orange-500 transition-colors">
                 <FaArrowLeft />
               </button>
-              <h3 className="text-lg font-black text-white uppercase italic">Schedule & Confirm</h3>
+              <h3 className="text-sm font-bold text-white uppercase italic">Schedule & Confirm</h3>
             </div>
 
             {/* Summary Card */}
@@ -1009,7 +1014,7 @@ const QuickBooking = () => {
               <div className="w-16 h-16 bg-orange-500/70 rounded-full flex items-center justify-center mx-auto mb-4">
                 {getServiceIcon(currentBooking.service)}
               </div>
-              <h3 className="text-white font-black uppercase italic text-xl leading-tight">
+              <h3 className="text-sm font-bold uppercase italic text-xl leading-tight">
                 {currentBooking.serviceName}
               </h3>
               <p className="text-orange-400 text-sm font-black mt-1">
