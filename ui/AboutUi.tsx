@@ -250,7 +250,7 @@ export default function AboutUi() {
                   <img 
                     src={member.image} 
                     alt={member.name}
-                    className="w-full h-64 object-cover md:grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-500"
+                    className="w-full h-[380px] object-cover  md:grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-500"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
