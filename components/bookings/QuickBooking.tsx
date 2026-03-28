@@ -736,8 +736,8 @@ const QuickBooking = () => {
       <AnimatePresence mode="wait">
         {/*HEADER*/}
         <div>
-          <h1 className="text-xl font-black text-white uppercase pb-0 mb-0">Quick Bookings</h1>
-          <span className="-mt-10 text-[10px] font-semibold italic text-orange-500 pb-10">Get quick quotations, and faster response within 24-hours</span>
+          <h1 className="text-xl font-black text-white uppercase pb-0">Quick Bookings</h1>
+          <p className="-mt-1 text-[10px] font-semibold italic text-orange-500 pb-2">Get quick quotations, and faster response within 24-hours</p>
         </div>
         
         {/* STEP 1: Contact Information */}
@@ -811,7 +811,7 @@ const QuickBooking = () => {
                   <button
                     key={service.id}
                     onClick={() => handleServiceSelect(service.id)}
-                    className={`h-40 p-4 bg-black/20 border-2 ${hasBooking ? 'border-green-500' : 'border-white/10'} rounded-xl hover:bg-white/10 transition-all relative group`}
+                    className={`h-38 p-4 bg-black/20 border-2 ${hasBooking ? 'border-green-500' : 'border-white/10'} rounded-xl hover:bg-white/10 transition-all relative group`}
                   >
                     {hasBooking && (
                       <span className="absolute -top-2 -right-2 bg-green-500 text-white text-[8px] font-black px-2 py-1 rounded-full">
