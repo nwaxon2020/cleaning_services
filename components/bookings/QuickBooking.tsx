@@ -737,7 +737,7 @@ const QuickBooking = () => {
         {/*HEADER*/}
         <div>
           <h1 className="text-xl font-black text-white uppercase pb-0 mb-0">Quick Bookings</h1>
-          <span className="-mt-2 text-[10px] font-semibold italic text-orange-500 pb-10">Get quick quotations, and faster response within 24-hours</span>
+          <span className="-mt-10 text-[10px] font-semibold italic text-orange-500 pb-10">Get quick quotations, and faster response within 24-hours</span>
         </div>
         
         {/* STEP 1: Contact Information */}
