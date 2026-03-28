@@ -233,8 +233,8 @@ export default function AboutUi() {
       <section className="py-24 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-black uppercase tracking-tighter text-slate-900">Our Professional Staff</h2>
-            <p className="text-slate-500 mt-2 font-medium">The experts behind your smile</p>
+            <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter text-slate-900">Our Professional Staff</h2>
+            <p className="text-slate-500 mt-1 font-medium">The experts behind your smile</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {staff.map((member, i) => (
@@ -246,7 +246,7 @@ export default function AboutUi() {
                 transition={{ delay: i * 0.1 }}
                 className="group"
               >
-                <div className="relative overflow-hidden rounded-2xl mb-6 shadow-md max-w-[320px] mx-auto">
+                <div className="relative overflow-hidden rounded-2xl mb-2 shadow-md max-w-[320px] mx-auto">
                   <img 
                     src={member.image} 
                     alt={member.name}
