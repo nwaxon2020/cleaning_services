@@ -234,7 +234,7 @@ export default function AboutUi() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter text-slate-900">Our Professional Staff</h2>
-            <p className="text-slate-500 mt-1 font-medium">The experts behind your smile</p>
+            <p className="text-slate-500 md:mt-1 font-medium">The experts behind your smile</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {staff.map((member, i) => (
