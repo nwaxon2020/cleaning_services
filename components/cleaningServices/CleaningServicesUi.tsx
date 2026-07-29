@@ -96,7 +96,7 @@ const CARD_THEMES = [
   { border: 'hover:border-rose-500', bg: 'bg-rose-50', text: 'text-rose-600', btn: 'bg-rose-600', shadow: 'shadow-rose-200' },
 ];
 
-const timeSlots = [ '12-2 AM', '3-5 AM', '6-8 AM', '9-11 AM', '12-2 PM', '3-5 PM', '6-8 PM', '9-11 PM',];
+const timeSlots = ['12-2 AM', '3-5 AM', '6-8 AM', '9-11 AM', '12-2 PM', '3-5 PM', '6-8 PM', '9-11 PM',];
 
 const contactPreferences = [
   { value: 'WhatsApp', label: 'WhatsApp', icon: FaWhatsapp, color: 'text-green-600' },
