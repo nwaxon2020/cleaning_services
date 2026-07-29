@@ -58,7 +58,7 @@ const ServiceCard = memo(({ item, onImageClick, contactNumber }: any) => (
       </div>
       <p className="text-[11px] text-slate-500 line-clamp-2 italic leading-tight">{item.description}</p>
       <div>
-         <span className="text-sm font-black text-purple-600 italic">£{item.priceRange}</span>
+         <span className="text-sm font-black text-purple-600 italic"><span className="text-xs font-semibold">From</span> £{item.priceRange}</span>
          <span className="text-xs underline text-slate-400 ml-2 font-bold uppercase">{item.pricePer}</span>
       </div>
       <div className="mt-auto pt-2 border-t border-orange-200 flex items-center justify-between">
@@ -93,6 +93,12 @@ export default function DecorationServicesUi() {
 
   //time
   const TIME_SLOTS = [
+    "12:00 AM - 1:00 AM",
+    "1:00 AM - 2:00 AM",
+    "2:00 AM - 3:00 AM",
+    "3:00 AM - 4:00 AM",
+    "4:00 AM - 5:00 AM",
+    "5:00 AM - 6:00 AM",
     "6:00 AM - 7:00 AM",
     "7:00 AM - 8:00 AM",
     "8:00 AM - 9:00 AM",
@@ -107,7 +113,10 @@ export default function DecorationServicesUi() {
     "5:00 PM - 6:00 PM",
     "6:00 PM - 7:00 PM",
     "7:00 PM - 8:00 PM",
-    "8:00 PM - 9:00 PM"
+    "8:00 PM - 9:00 PM",
+    "9:00 PM - 10:00 PM",
+    "10:00 PM - 11:00 PM",
+    "11:00 PM - 12:00 AM"
   ];
   
   // New state for notification badge
@@ -433,7 +442,7 @@ export default function DecorationServicesUi() {
                       <div className="md:hidden p-4 bg-slate-900 rounded-md md:rounded-xl text-white flex flex-col justify-center items-center">
                           <span className="text-[9px] font-black uppercase text-slate-300 tracking-widest mb-1">Guide for {formData.quantity} Units</span>
                           <span className="text-xl font-black italic text-orange-400">
-                              £{(Number(selectedItem.priceRange.split('-')[0]) * formData.quantity).toLocaleString()} - £{(Number(selectedItem.priceRange.split('-')[1]) * formData.quantity).toLocaleString()}
+                              <small className="text-white text-xs font-semibold">From</small> £{(Number(selectedItem.priceRange.split('-')[0]) * formData.quantity).toLocaleString()} - Upwards
                           </span>
                           <p className="text-xs font-bold mt-2 text-center text-white italic">Offers must fall within this professional range</p>
                       </div> 
