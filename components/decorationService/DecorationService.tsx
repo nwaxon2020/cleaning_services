@@ -58,7 +58,7 @@ const ServiceCard = memo(({ item, onImageClick, contactNumber }: any) => (
       </div>
       <p className="text-[11px] text-slate-500 line-clamp-2 italic leading-tight">{item.description}</p>
       <div>
-         <span className="text-sm font-black text-purple-600 italic"><span className="text-xs font-semibold">From</span> £{item.priceRange}</span>
+         <span className="text-sm font-black text-purple-600 italic"><span className="text-xs font-semibold text-red-800">From</span> £{item.priceRange}</span>
          <span className="text-xs underline text-slate-400 ml-2 font-bold uppercase">{item.pricePer}</span>
       </div>
       <div className="mt-auto pt-2 border-t border-orange-200 flex items-center justify-between">
@@ -444,7 +444,7 @@ export default function DecorationServicesUi() {
                           <span className="text-xl font-black italic text-orange-400">
                               <small className="text-white text-xs font-semibold">From</small> £{(Number(selectedItem.priceRange.split('-')[0]) * formData.quantity).toLocaleString()} - Upwards
                           </span>
-                          <p className="text-xs font-bold mt-2 text-center text-white italic">Offers must fall within this professional range</p>
+                          <p className="text-xs font-bold mt-2 text-center text-white italic">Offers must start from the professional range upwards</p>
                       </div> 
 
                       {/* Date and time - with min date to prevent past dates */}
@@ -473,9 +473,9 @@ export default function DecorationServicesUi() {
                     <div className="hidden p-4 bg-slate-900 rounded-md md:rounded-xl text-white md:flex flex-col justify-center items-center">
                         <span className="text-[9px] font-black uppercase text-slate-300 tracking-widest mb-1">Guide for {formData.quantity} Units</span>
                         <span className="text-xl font-black italic text-orange-400">
-                            £{(Number(selectedItem.priceRange.split('-')[0]) * formData.quantity).toLocaleString()} - £{(Number(selectedItem.priceRange.split('-')[1]) * formData.quantity).toLocaleString()}
+                             <small className="text-white text-xs font-semibold">From</small> £{(Number(selectedItem.priceRange.split('-')[0]) * formData.quantity).toLocaleString()} - Upwards
                         </span>
-                        <p className="text-xs font-bold mt-2 text-center text-white italic">Offers must fall within this professional range</p>
+                        <p className="text-xs font-bold mt-2 text-center text-white italic">Offers must start from the professional range upwards</p>
                     </div> 
                   </div>
 
